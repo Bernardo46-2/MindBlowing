@@ -17,84 +17,55 @@ class Writable a where
     write :: a -> String
 
 data Inst =
-    Nop               |
-    Add AddInst       |
-    Move MoveInst     |
-    Input InputInst   |
-    Output OutputInst |
-    Clear ClearInst   |
-    Mul MulInst       |
-    Loop LoopInst
+    Nop             |
+    Add Int Int     |
+    Move Int        |
+    Input Int       |
+    Output Int      |
+    Clear Int       |
+    Mul Int Int Int |
+    Loop [Inst]
     deriving Show
-
-data AddInst    = AddInst    Int Int     deriving Show
-data MoveInst   = MoveInst   Int         deriving Show
-data InputInst  = InputInst  Int         deriving Show
-data OutputInst = OutputInst Int         deriving Show
-data ClearInst  = ClearInst  Int         deriving Show
-data MulInst    = MulInst    Int Int Int deriving Show
-data LoopInst   = LoopInst   [Inst]      deriving Show
 
 instance Writable Inst where
     write Nop = []
-    write (Add x) = write x
-    write (Move x) = write x
-    write (Input x) = write x
-    write (Output x) = write x
-    write (Clear x) = write x
-    write (Mul x) = write x
-    write (Loop x) = write x
-
-instance Writable AddInst where
-    write (AddInst x off) = tab ++ "add " ++ show x ++ " " ++ show off ++ "\n"
-
-instance Writable MoveInst where
-    write (MoveInst x) = tab ++ "move " ++ show x ++ "\n"
-
-instance Writable InputInst where
-    write (InputInst off) = tab ++ "input " ++ show off ++ "\n"
-
-instance Writable OutputInst where
-    write (OutputInst off) = tab ++ "print " ++ show off ++ "\n"
-
-instance Writable ClearInst where
-    write (ClearInst off) = tab ++ "clear " ++ show off ++ "\n"
-
-instance Writable MulInst where
-    write (MulInst x y off) = tab ++ "mul " ++ show x ++ " " ++ show y ++ " " ++ show off ++ "\n"
-
-instance Writable LoopInst where
-    write (LoopInst is) = concat [write i | i <- is]
+    write (Add x off) = tab ++ "add " ++ show x ++ " " ++ show off ++ "\n"
+    write (Move x) = tab ++ "move " ++ show x ++ "\n"
+    write (Input off) = tab ++ "input " ++ show off ++ "\n"
+    write (Output off) = tab ++ "print " ++ show off ++ "\n"
+    write (Clear off) = tab ++ "clear " ++ show off ++ "\n"
+    write (Mul x y off) = tab ++ "mul " ++ show x ++ " " ++ show y ++ " " ++ show off ++ "\n"
+    write (Loop xs) = concat [write x | x <- xs]
 
 initNopInst :: Inst
 initNopInst = Nop
 
 initAddInst :: Int -> Int -> Inst
-initAddInst x off = Add (AddInst x off)
+initAddInst x off = Add x off
 
 initMoveInst :: Int -> Inst
-initMoveInst x = Move (MoveInst x)
+initMoveInst x = Move x
 
 initInputInst :: Int -> Inst
-initInputInst off = Input (InputInst off)
+initInputInst off = Input off
 
 initOutputInst :: Int -> Inst
-initOutputInst off = Output (OutputInst off)
+initOutputInst off = Output off
 
 initClearInst :: Int -> Inst
-initClearInst off = Clear (ClearInst off)
+initClearInst off = Clear off
 
 initMulInst :: Int -> Int -> Int -> Inst
-initMulInst x y off = Mul (MulInst x y off)
+initMulInst x y off = Mul x y off
 
 initLoopInst :: [Inst] -> Inst
-initLoopInst is = Loop (LoopInst is)
+initLoopInst is = Loop is
 
 instsToStr :: [Inst] -> String
 instsToStr = snd . go 0
     where
         go l [] = (l, [])
-        go l ((Loop (LoopInst is)):iss) = 
+        go l (Loop is:iss) = 
             let (l', s) = go (l+1) is
                 start = "\n" ++ tab ++ "jump L" ++ show l' ++ "\nL" ++ show l ++ ":\n"
                 end = "\nL" ++ show l' ++ ":\n" ++ tab ++ "jumpz L" ++ show l ++ "\n\n"

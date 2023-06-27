@@ -9,7 +9,7 @@ module Args (
 
 import Data.List (isPrefixOf)
 
-import Utils
+import Utils (trim)
 
 data Args = Args {
     file :: String,
