@@ -11,8 +11,6 @@ module Inst (
     instsToStr
 ) where
 
-import Utils (tab)
-
 class Writable a where
     write :: a -> String
 
@@ -29,12 +27,12 @@ data Inst =
 
 instance Writable Inst where
     write Nop = []
-    write (Add x off) = tab ++ "add " ++ show x ++ " " ++ show off ++ "\n"
-    write (Move x) = tab ++ "move " ++ show x ++ "\n"
-    write (Input off) = tab ++ "input " ++ show off ++ "\n"
-    write (Output off) = tab ++ "print " ++ show off ++ "\n"
-    write (Clear off) = tab ++ "clear " ++ show off ++ "\n"
-    write (Mul x y off) = tab ++ "mul " ++ show x ++ " " ++ show y ++ " " ++ show off ++ "\n"
+    write (Add x off) = "\tadd " ++ show x ++ " " ++ show off ++ "\n"
+    write (Move x) = "\tmove " ++ show x ++ "\n"
+    write (Input off) = "\tinput " ++ show off ++ "\n"
+    write (Output off) = "\tprint " ++ show off ++ "\n"
+    write (Clear off) = "\tclear " ++ show off ++ "\n"
+    write (Mul x y off) = "\tmul " ++ show x ++ " " ++ show y ++ " " ++ show off ++ "\n"
     write (Loop xs) = concat [write x | x <- xs]
 
 initNopInst :: Inst
@@ -67,8 +65,8 @@ instsToStr = snd . go 0
         go l [] = (l, [])
         go l (Loop is:iss) = 
             let (l', s) = go (l+1) is
-                start = "\n" ++ tab ++ "jump L" ++ show l' ++ "\nL" ++ show l ++ ":\n"
-                end = "\nL" ++ show l' ++ ":\n" ++ tab ++ "jumpz L" ++ show l ++ "\n\n"
+                start = "\n" ++ "\tjump L" ++ show l' ++ "\nL" ++ show l ++ ":\n"
+                end = "\nL" ++ show l' ++ ":\n" ++ "\tjumpz L" ++ show l ++ "\n\n"
             in  (l'+1, start ++ s ++ end ++ (snd . go (l'+2)) iss)
         go l (i:is) = 
             let (l', s) = go l is
