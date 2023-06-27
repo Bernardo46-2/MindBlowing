@@ -33,7 +33,7 @@ instance Writable Inst where
     write (Output off) = "\tprint " ++ show off ++ "\n"
     write (Clear off) = "\tclear " ++ show off ++ "\n"
     write (Mul x y off) = "\tmul " ++ show x ++ " " ++ show y ++ " " ++ show off ++ "\n"
-    write (Loop xs) = concat [write x | x <- xs]
+    write (Loop xs) = concat $ write <$> xs
 
 initNopInst :: Inst
 initNopInst = Nop

@@ -22,7 +22,7 @@ fileStart = "_start:\n"
 
 handleFlags :: Args -> IO ()
 handleFlags args = do
-    parser <- (initParser . getFile) args
+    parser <- initParser $ getFile args
     let bytecode = parseCode parser
 
     if hasHelpFlag args then
