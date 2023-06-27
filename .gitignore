@@ -1,2 +1,2 @@
-./stuff/*
-./*.txt
+stuff/*
+*.txt
