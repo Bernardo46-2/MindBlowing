@@ -1,7 +1,7 @@
 module Parser (
-    initParser
-  , parseCode
-  , parseFile
+    initParser,
+    parseCode,
+    parseFile
 ) where
 
 import Inst

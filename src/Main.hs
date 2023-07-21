@@ -36,9 +36,9 @@ printHelp = error "TODO: print help"
 handleFlags :: Args -> IO ()
 handleFlags args
     | hasHelpFlag args = printHelp
-    | hasInterpretFlag args = runFile (getFileName args) (getOptimizationLevel args)
+    | hasInterpretFlag args = runFile (getInFile args) (getOptimizationLevel args)
     | hasAssemblyFlag args = error "TODO: compile to assembly"
-    | hasByteCodeFlag args = fileToByteCode (getFileName args) (getRenameFile args) (getOptimizationLevel args)
+    | hasByteCodeFlag args = fileToByteCode (getInFile args) (getOutFile args) (getOptimizationLevel args)
     | otherwise = error "TODO: compile to ELF"
 
 main :: IO ()

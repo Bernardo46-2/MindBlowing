@@ -1,7 +1,7 @@
 module ByteCode (
-    toByteCode
-  , instsToByteCode
-  , fileToByteCode
+    toByteCode,
+    instsToByteCode,
+    fileToByteCode
 ) where
 
 import Inst

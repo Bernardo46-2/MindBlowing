@@ -1,6 +1,6 @@
 module Interpreter (
-    runFile
-  , runByteCode
+    runFile,
+    runByteCode
 ) where
 
 import Data.Word (Word8)
