@@ -3,7 +3,7 @@ import Data.List (isPrefixOf)
 import Data.Char (isSpace)
 
 import Args
-import Inst (instsToStr)
+import Inst (instsToByteCode)
 import Parser (initParser, parseCode)
 import Interpreter (runByteCode)
 
@@ -41,7 +41,7 @@ handleFlags args = do
     else if hasAssemblyFlag args then
         error "TODO: compile to assembly"
     else if hasBytecodeFlag args then
-        writeFile outFile $ fileStart ++ instsToStr bytecode
+        writeFile outFile $ fileStart ++ instsToByteCode bytecode
     else
         runByteCode bytecode
 

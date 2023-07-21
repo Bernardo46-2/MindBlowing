@@ -4,8 +4,10 @@ module Interpreter (
 
 import Data.Word (Word8)
 import Data.Char (chr)
-import Inst (Inst(..), ByteCode)
 import Control.Monad (foldM)
+
+import Utils (replace)
+import Inst (Inst(..), ByteCode)
 
 data VM = VM { ptr :: Int, mem :: [Word8] } deriving Show
 
@@ -27,7 +29,7 @@ setWithPtrOffset x off vm = VM p m'
         p = ptr vm
         m = mem vm
         i = addOffset p off
-        m' = take i m ++ [x] ++ drop (i+1) m
+        m' = replace i x m
 
 addWithPtrOffset :: Int -> Int -> VM -> VM
 addWithPtrOffset x off vm = VM p m'
@@ -36,7 +38,7 @@ addWithPtrOffset x off vm = VM p m'
         m = mem vm
         i = addOffset p off
         y = fromIntegral $ m !! i
-        m' = take i m ++ [fromIntegral $ x + y] ++ drop (i+1) m
+        m' = replace i (fromIntegral (x+y)) m
 
 mulWithPtrOffset :: Int -> Int -> Int -> VM -> VM
 mulWithPtrOffset x y off vm = VM p m'
@@ -46,11 +48,12 @@ mulWithPtrOffset x y off vm = VM p m'
         i = addOffset p off
         x' = fromIntegral x
         y' = fromIntegral y
-        m' = take i m ++ [x' * y'] ++ drop (i+1) m
+        m' = replace i (x' * y') m
 
 runLoop :: [Inst] -> VM -> IO VM
-runLoop xs vm = if getWithPtrOffset 0 vm == 0 then return vm
-    else foldM runInst vm xs >>= \vm' -> runLoop xs vm'
+runLoop xs vm
+    | getWithPtrOffset 0 vm == 0 = return vm
+    | otherwise = foldM runInst vm xs >>= \vm' -> runLoop xs vm'
 
 runInst :: VM -> Inst -> IO VM
 runInst vm Nop = return vm

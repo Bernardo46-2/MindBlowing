@@ -1,7 +1,7 @@
 module Inst (
     ByteCode,
     Inst(..),
-    instsToStr
+    instsToByteCode
 ) where
 
 type ByteCode = [Inst]
@@ -27,8 +27,8 @@ toByteCode (Clear off) = "\tclear " ++ show off ++ "\n"
 toByteCode (Mul x y off) = "\tmul " ++ show x ++ " " ++ show y ++ " " ++ show off ++ "\n"
 toByteCode (Loop xs) = concat $ toByteCode <$> xs
 
-instsToStr :: ByteCode -> String
-instsToStr = snd . go 0
+instsToByteCode :: ByteCode -> String
+instsToByteCode = snd . go 0
     where
         go l [] = (l, [])
         go l (Loop is:iss) = 
