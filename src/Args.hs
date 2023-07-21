@@ -1,46 +1,76 @@
 module Args (
-    Args,
-    parseArgs,
-    hasHelpFlag,
-    hasAssemblyFlag,
-    hasBytecodeFlag,
-    getFile
+    Args
+  , parseArgs
+  , getFileName
+  , getRenameFile
+  , getOptimizationLevel
+  , hasHelpFlag
+  , hasAssemblyFlag
+  , hasByteCodeFlag
+  , hasInterpretFlag
 ) where
 
 import Data.List (isPrefixOf)
 
-import Utils (trim)
+import Utils (trim, replace)
 
-data Args = Args {
-    file :: String,
-    flags :: [Char]
-} deriving Show
+data Arg
+  = File String
+  | Rename String
+  | Optimize Int
+  | Help Bool
+  | Assembly Bool
+  | ByteCode Bool
+  | Interpret Bool
+  deriving Show
+
+type Args = [Arg]
+
+outFile :: String
+outFile = "a.txt"
 
 initArgs :: Args
-initArgs = Args { file = "", flags = [] }
+initArgs = [
+        File ""
+      , Rename outFile
+      , Optimize 0
+      , Help False
+      , Assembly False
+      , ByteCode False
+      , Interpret False
+    ]
 
-pushFile :: String -> Args -> Args
-pushFile s args = Args { file = s, flags = flags args}
+getFileName :: Args -> String
+getFileName xs = let File x = head xs in x
 
-pushFlag :: Char -> Args -> Args
-pushFlag x args = Args { file = file args, flags = x:flags args}
+getRenameFile :: Args -> String
+getRenameFile xs = let Rename x = xs !! 1 in x
 
-parseArgs :: [String] -> IO Args
-parseArgs = return . go initArgs
+getOptimizationLevel :: Args -> Int
+getOptimizationLevel xs = let Optimize x = xs !! 2 in x
+
+hasHelpFlag :: Args -> Bool
+hasHelpFlag xs = let Help x = xs !! 3 in x
+
+hasAssemblyFlag :: Args -> Bool
+hasAssemblyFlag xs = let Assembly x = xs !! 4 in x
+
+hasByteCodeFlag :: Args -> Bool
+hasByteCodeFlag xs = let ByteCode x = xs !! 5 in x
+
+hasInterpretFlag :: Args -> Bool 
+hasInterpretFlag xs = let Interpret x = last xs in x
+
+parseArgs :: [String] -> Args
+parseArgs = go initArgs
     where
         go acc [] = acc
         go acc (x:xs)
-            | isPrefixOf "-" x = go (pushFlag ((head . trim . tail) x) acc) xs
-            | otherwise = go (pushFile x acc) xs
-
-hasHelpFlag :: Args -> Bool
-hasHelpFlag args = 'h' `elem` flags args
-
-hasAssemblyFlag :: Args -> Bool
-hasAssemblyFlag args = 'S' `elem` flags args
-
-hasBytecodeFlag :: Args -> Bool
-hasBytecodeFlag args = 'B' `elem` flags args
-
-getFile :: Args -> String
-getFile = file
+            | x == "-o" = go (replace 1 (Rename (head xs)) acc) (tail xs)
+            | "-O" `isPrefixOf` x = go (replace 2 (Optimize (read (drop 2 x))) acc) xs
+            | x == "-h" = go (replace 3 (Help True) acc) xs
+            | x == "-S" = go (replace 4 (Assembly True) acc) xs
+            | x == "-B" = go (replace 5 (ByteCode True) acc) xs
+            | x == "run" = go (replace 6 (Interpret True) acc) xs
+            | not ("-" `isPrefixOf` x) = go (replace 0 (File x) acc) xs
+            | otherwise = error $ "Args: Invalid Argument `" ++ x ++ "`"

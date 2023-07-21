@@ -1,16 +1,9 @@
 module Optimizer (
-
+    optimize
 ) where
 
 import Inst
 
-data Optimizer = Optimizer {
-    bytecode :: ByteCode
-}
-
-canOptimizeLoop :: ByteCode -> Bool
-canOptimizeLoop [] = False
-canOptimizeLoop (b:bs) = error "TODO: check if loop can be optimized"
-
-optimize :: Optimizer -> Optimizer
-optimize op = error "TODO: optimize code"
+optimize :: Int -> ByteCode -> ByteCode
+optimize 0 bs = bs
+optimize _ _ = error "TODO: optimize code"

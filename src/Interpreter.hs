@@ -1,5 +1,6 @@
 module Interpreter (
-    runByteCode
+    runFile
+  , runByteCode
 ) where
 
 import Data.Word (Word8)
@@ -8,6 +9,8 @@ import Control.Monad (foldM)
 
 import Utils (replace)
 import Inst (Inst(..), ByteCode)
+import Parser (parseFile)
+import Optimizer (optimize)
 
 data VM = VM { ptr :: Int, mem :: [Word8] } deriving Show
 
@@ -51,9 +54,9 @@ mulWithPtrOffset x y off vm = VM p m'
         m' = replace i (x' * y') m
 
 runLoop :: [Inst] -> VM -> IO VM
-runLoop xs vm
+runLoop is vm
     | getWithPtrOffset 0 vm == 0 = return vm
-    | otherwise = foldM runInst vm xs >>= \vm' -> runLoop xs vm'
+    | otherwise = foldM runInst vm is >>= runLoop is
 
 runInst :: VM -> Inst -> IO VM
 runInst vm Nop = return vm
@@ -63,7 +66,10 @@ runInst vm (Input off) = readLn >>= \x -> return $ setWithPtrOffset x off vm
 runInst vm (Output off) = (putStr [chr $ fromIntegral $ getWithPtrOffset off vm]) >> return vm
 runInst vm (Clear off) = return $ setWithPtrOffset 0 off vm
 runInst vm (Mul x y off) = return $ mulWithPtrOffset x y off vm
-runInst vm (Loop xs) = runLoop xs vm
+runInst vm (Loop is) = runLoop is vm
 
 runByteCode :: ByteCode -> IO ()
 runByteCode xs = foldM runInst initVM xs >> putStrLn ""
+
+runFile :: String -> Int -> IO ()
+runFile f lvl = parseFile f >>= runByteCode . optimize lvl

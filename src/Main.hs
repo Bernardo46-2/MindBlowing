@@ -2,19 +2,22 @@ import System.Environment (getArgs)
 import Data.List (isPrefixOf)
 import Data.Char (isSpace)
 
-import Args
-import Inst (instsToByteCode)
+import Args 
 import Parser (initParser, parseCode)
-import Interpreter (runByteCode)
+import Interpreter (runFile)
+import ByteCode (fileToByteCode)
 
 --------------------------------------------------------------------------------------------------
 -- TODO
 --------------------------------------------------------------------------------------------------
 
--- Interpreter -> DONE
--- Create a `-o` flag
--- Allow to choose between optimize the code or not through command line flags
--- Parse bytecode directly from a file
+-- Write an interpreter -> DONE
+-- Rewrite args parser -> DONE
+-- Compile to bytecode -> DONE
+-- Allow different levels of optimization
+-- Compile to assembly
+-- Compile to ELF (Need to think this through yet)
+-- Write a bytecode parser (Maybe)
 
 --------------------------------------------------------------------------------------------------
 -- References
@@ -27,23 +30,16 @@ optimizationStrategies = "http://calmerthanyouare.org/2015/01/07/optimizing-brai
 -- Main
 --------------------------------------------------------------------------------------------------
 
-outFile = "a.txt"
-fileStart = "_start:\n"
+printHelp :: IO ()
+printHelp = error "TODO: print help"
 
 handleFlags :: Args -> IO ()
-handleFlags args = do
-    file <- readFile $ getFile args
-    let parser = initParser file
-        bytecode = parseCode parser
-
-    if hasHelpFlag args then
-        error "TODO: print help info"
-    else if hasAssemblyFlag args then
-        error "TODO: compile to assembly"
-    else if hasBytecodeFlag args then
-        writeFile outFile $ fileStart ++ instsToByteCode bytecode
-    else
-        runByteCode bytecode
+handleFlags args
+    | hasHelpFlag args = printHelp
+    | hasInterpretFlag args = runFile (getFileName args) (getOptimizationLevel args)
+    | hasAssemblyFlag args = error "TODO: compile to assembly"
+    | hasByteCodeFlag args = fileToByteCode (getFileName args) (getRenameFile args) (getOptimizationLevel args)
+    | otherwise = error "TODO: compile to ELF"
 
 main :: IO ()
-main = getArgs >>= parseArgs >>= handleFlags
+main = getArgs >>= handleFlags . parseArgs

@@ -1,6 +1,7 @@
 module Parser (
-    initParser,
-    parseCode,
+    initParser
+  , parseCode
+  , parseFile
 ) where
 
 import Inst
@@ -88,3 +89,6 @@ parseCodeWhile f p
 
 parseCode :: Parser -> ByteCode
 parseCode = reverse . bytecode . parseCodeWhile (not . null . code)
+
+parseFile :: String -> IO ByteCode
+parseFile f = readFile f >>= return . parseCode . initParser
