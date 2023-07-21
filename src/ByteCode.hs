@@ -8,6 +8,7 @@ import Inst
 import Parser (parseFile)
 import Optimizer (optimize)
 
+fileStart :: String
 fileStart = "_start:\n"
 
 toByteCode :: Inst -> String
@@ -25,10 +26,11 @@ instsToByteCode = snd . go 0
     where
         go l [] = (l, [])
         go l (Loop is:iss) = 
-            let (l', s) = go (l+1) is
-                start = "\n" ++ "\tjump L" ++ show l' ++ "\nL" ++ show l ++ ":\n"
-                end = "\nL" ++ show l' ++ ":\n" ++ "\tjumpz L" ++ show l ++ "\n\n"
-            in  (l'+1, start ++ s ++ end ++ (snd . go (l'+2)) iss)
+            let (l', s) = go (l+2) is
+                start = "\n" ++ "\tjump L" ++ show (l+1) ++ "\nL" ++ show l ++ ":\n"
+                end = "\nL" ++ show (l+1) ++ ":\n" ++ "\tjumpz L" ++ show l ++ "\n\n"
+                (l'', s') = go l' iss
+            in  (l'', start ++ s ++ end ++ s')
         go l (i:is) = 
             let (l', s) = go l is
             in  (l', toByteCode i ++ s)
