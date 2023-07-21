@@ -1,65 +1,33 @@
 module Inst (
-    Inst,
-    initNopInst,
-    initAddInst,
-    initMoveInst,
-    initInputInst,
-    initOutputInst,
-    initClearInst,
-    initMulInst,
-    initLoopInst,
+    ByteCode,
+    Inst(..),
     instsToStr
 ) where
 
-class Writable a where
-    write :: a -> String
+type ByteCode = [Inst]
 
-data Inst =
-    Nop             |
-    Add Int Int     |
-    Move Int        |
-    Input Int       |
-    Output Int      |
-    Clear Int       |
-    Mul Int Int Int |
-    Loop [Inst]
-    deriving Show
+data Inst
+  = Nop
+  | Add Int Int
+  | Move Int
+  | Input Int
+  | Output Int
+  | Clear Int
+  | Mul Int Int Int
+  | Loop ByteCode
+  deriving Show
 
-instance Writable Inst where
-    write Nop = []
-    write (Add x off) = "\tadd " ++ show x ++ " " ++ show off ++ "\n"
-    write (Move x) = "\tmove " ++ show x ++ "\n"
-    write (Input off) = "\tinput " ++ show off ++ "\n"
-    write (Output off) = "\tprint " ++ show off ++ "\n"
-    write (Clear off) = "\tclear " ++ show off ++ "\n"
-    write (Mul x y off) = "\tmul " ++ show x ++ " " ++ show y ++ " " ++ show off ++ "\n"
-    write (Loop xs) = concat $ write <$> xs
+toByteCode :: Inst -> String
+toByteCode Nop = []
+toByteCode (Add x off) = "\tadd " ++ show x ++ " " ++ show off ++ "\n"
+toByteCode (Move x) = "\tmove " ++ show x ++ "\n"
+toByteCode (Input off) = "\tinput " ++ show off ++ "\n"
+toByteCode (Output off) = "\tprint " ++ show off ++ "\n"
+toByteCode (Clear off) = "\tclear " ++ show off ++ "\n"
+toByteCode (Mul x y off) = "\tmul " ++ show x ++ " " ++ show y ++ " " ++ show off ++ "\n"
+toByteCode (Loop xs) = concat $ toByteCode <$> xs
 
-initNopInst :: Inst
-initNopInst = Nop
-
-initAddInst :: Int -> Int -> Inst
-initAddInst x off = Add x off
-
-initMoveInst :: Int -> Inst
-initMoveInst x = Move x
-
-initInputInst :: Int -> Inst
-initInputInst off = Input off
-
-initOutputInst :: Int -> Inst
-initOutputInst off = Output off
-
-initClearInst :: Int -> Inst
-initClearInst off = Clear off
-
-initMulInst :: Int -> Int -> Int -> Inst
-initMulInst x y off = Mul x y off
-
-initLoopInst :: [Inst] -> Inst
-initLoopInst is = Loop is
-
-instsToStr :: [Inst] -> String
+instsToStr :: ByteCode -> String
 instsToStr = snd . go 0
     where
         go l [] = (l, [])
@@ -70,4 +38,4 @@ instsToStr = snd . go 0
             in  (l'+1, start ++ s ++ end ++ (snd . go (l'+2)) iss)
         go l (i:is) = 
             let (l', s) = go l is
-            in  (l', write i ++ s)
+            in  (l', toByteCode i ++ s)

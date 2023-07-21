@@ -5,6 +5,16 @@ import Data.Char (isSpace)
 import Args
 import Inst (instsToStr)
 import Parser (initParser, parseCode)
+import Interpreter (runByteCode)
+
+--------------------------------------------------------------------------------------------------
+-- TODO
+--------------------------------------------------------------------------------------------------
+
+-- Interpreter -> DONE
+-- Create a `-o` flag
+-- Allow to choose between optimize the code or not through command line flags
+-- Parse bytecode directly from a file
 
 --------------------------------------------------------------------------------------------------
 -- References
@@ -22,8 +32,9 @@ fileStart = "_start:\n"
 
 handleFlags :: Args -> IO ()
 handleFlags args = do
-    parser <- initParser $ getFile args
-    let bytecode = parseCode parser
+    file <- readFile $ getFile args
+    let parser = initParser file
+        bytecode = parseCode parser
 
     if hasHelpFlag args then
         error "TODO: print help info"
@@ -32,7 +43,7 @@ handleFlags args = do
     else if hasBytecodeFlag args then
         writeFile outFile $ fileStart ++ instsToStr bytecode
     else
-        return ()
+        runByteCode bytecode
 
 main :: IO ()
 main = getArgs >>= parseArgs >>= handleFlags
