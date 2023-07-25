@@ -13,8 +13,8 @@ data Parser = Parser {
     bytecode :: ByteCode
 }
 
-unmatchedBracketError :: Parser -> a
-unmatchedBracketError p = error $ "(l:" ++ show (line p) ++ " c:" ++ show (col p) ++ ") -> mismatched `]`"
+missingBracketError :: Parser -> a
+missingBracketError p = error $ "(l:" ++ show (line p) ++ " c:" ++ show (col p) ++ ") -> missing `]`"
 
 unexpectedBracketError :: Parser -> a
 unexpectedBracketError p = error $ "(l:" ++ show (line p) ++ " c:" ++ show (col p) ++ ") -> unexpected `]`"
@@ -74,7 +74,7 @@ parseInst p =
             '[' ->
                 let p' = move Parser { code = code p, line = line p, col = col p, bytecode = [] }
                     p'' = parseCodeWhile (\x -> (not . null . code) x && (head . code) x /= ']') p' in
-                if (null . code) p'' then unmatchedBracketError p''
+                if (null . code) p'' then missingBracketError p''
                 else
                     let p''' = Parser { code = code p'', line = line p'', col = col p'', bytecode = bytecode p }
                     in (Loop . reverse $ bytecode p'', p''')

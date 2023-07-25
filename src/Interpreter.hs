@@ -7,15 +7,13 @@ import Data.Word (Word8)
 import Data.Char (chr)
 import Control.Monad (foldM)
 
+import Consts (memSize)
 import Utils (replace)
 import Inst (Inst(..), ByteCode)
 import Parser (parseFile)
 import Optimizer (optimize)
 
 data VM = VM { ptr :: Int, mem :: [Word8] } deriving Show
-
-memSize :: Int
-memSize = 30_000
 
 initVM :: VM
 initVM = VM 0 $ take memSize $ repeat 0
