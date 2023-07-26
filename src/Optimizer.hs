@@ -1,13 +1,21 @@
 module Optimizer (optimize) where
 
 import Inst
-import Consts (maxWord8, memSize)
 
--- TODO: cancel_operations optimization (check for loops and IO)
+-- TODO: cancel_operations optimization (check for loops and IO) - lvl 3
 
 ---------------------------------------------------------------------------------------------------------------
 -- Level 1 Optimization
 ---------------------------------------------------------------------------------------------------------------
+
+removeNops :: ByteCode -> ByteCode
+removeNops = filter (/=Nop)
+
+removeInitialLoop :: ByteCode -> ByteCode
+removeInitialLoop = dropWhile isLoop
+    where
+        isLoop (Loop _) = True
+        isLoop _ = False
 
 sumOps :: Inst -> Inst -> Maybe Inst
 sumOps (Add x off) (Add y _) = Just (Add (x+y) off)
@@ -37,6 +45,15 @@ optimizeClearLoops = go []
 ---------------------------------------------------------------------------------------------------------------
 -- Level 2 Optimization
 ---------------------------------------------------------------------------------------------------------------
+
+optimizeScanLoops :: ByteCode -> ByteCode
+optimizeScanLoops = go []
+    where
+        go acc [] = reverse acc
+        go acc (Loop ([Move 1]):is) = go (Scan 'r':acc) is
+        go acc (Loop ([Move (-1)]):is) = go (Scan 'l':acc) is
+        go acc (Loop xs:is) = go (Loop (optimizeScanLoops xs):acc) is
+        go acc (i:is) = go (i:acc) is
 
 adjustOffsets :: ByteCode -> ByteCode
 adjustOffsets = go [] 0
@@ -87,7 +104,7 @@ optimizeMulLoops = reverse . foldl (\acc x -> tryOptimizeMulLoop x ++ acc) []
 
 optimize :: Int -> ByteCode -> ByteCode
 optimize 0 = id
-optimize 1 = compressOps . optimizeClearLoops
-optimize 2 = adjustOffsets . optimize 1
+optimize 1 = compressOps . optimizeClearLoops . removeInitialLoop . removeNops
+optimize 2 = optimizeScanLoops . adjustOffsets . optimize 1
 optimize 3 = optimizeMulLoops . optimize 2
 optimize lvl = error $ "Optimization level `" ++ show lvl ++ "` invalid"

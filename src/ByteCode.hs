@@ -19,6 +19,7 @@ toByteCode (Input off) = "\tinput " ++ show off ++ "\n"
 toByteCode (Output off) = "\tprint " ++ show off ++ "\n"
 toByteCode (Clear off) = "\tclear " ++ show off ++ "\n"
 toByteCode (Mul x off) = "\tmul " ++ show x ++ " " ++ show off ++ "\n"
+toByteCode (Scan x) = "\tscan " ++ [x] ++ "\n"
 toByteCode (Loop xs) = concat $ toByteCode <$> xs
 
 instsToByteCode :: ByteCode -> String

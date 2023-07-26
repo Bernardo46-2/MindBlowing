@@ -3,68 +3,90 @@ module Interpreter (
     runByteCode
 ) where
 
+import Control.Monad (foldM, forever)
 import Data.Word (Word8)
-import Data.Char (chr)
-import Control.Monad (foldM)
+import Data.Char (chr, ord)
+import Data.Int (Int64)
+import qualified Data.ByteString.Lazy as B
 
-import Consts (memSize, maxWord8)
-import Utils (replace)
-import Inst (Inst(..), ByteCode)
+import Inst
+import Consts (memSize, memSizeI64)
 import Parser (parseFile)
 import Optimizer (optimize)
 
-data VM = VM { ptr :: Int, mem :: [Word8] } deriving Show
+data VM = VM { ptr :: Int64, mem :: B.ByteString } deriving Show
 
 initVM :: VM
-initVM = VM 0 $ take memSize $ repeat 0
+initVM = VM 0 $ B.pack $ take memSize $ repeat 0
 
-addPtrOffset :: Int -> Int -> Int
-addPtrOffset p off = (p+off) `mod` memSize
+addPtrOffset :: Int64 -> Int64 -> Int64
+addPtrOffset p off = (p+off) `mod` memSizeI64
 
-getWithPtrOffset :: Int -> VM -> Word8
-getWithPtrOffset off vm = mem vm !! addPtrOffset (ptr vm) off
+getWithPtrOffset :: Int64 -> VM -> Word8
+getWithPtrOffset off vm = B.index (mem vm) (addPtrOffset (ptr vm) off)
 
-setWithPtrOffset :: Word8 -> Int -> VM -> VM
+setWithPtrOffset :: Word8 -> Int64 -> VM -> VM
 setWithPtrOffset x off vm = VM p m'
     where
         p = ptr vm
         m = mem vm
         i = addPtrOffset p off
-        m' = replace i x m
+        m' = B.take i m <> B.pack [x] <> B.drop (i+1) m
 
-addWithPtrOffset :: Int -> Int -> VM -> VM
+addWithPtrOffset :: Int64 -> Int64 -> VM -> VM
 addWithPtrOffset x off vm = VM p m'
     where
         p = ptr vm
         m = mem vm
         i = addPtrOffset p off
-        y = fromIntegral $ m !! i
-        m' = replace i (fromIntegral (x+y)) m
+        y = fromIntegral $ B.index m i
+        m' = B.take i m <> B.pack [fromIntegral (x+y)] <> B.drop (i+1) m
 
-mulWithPtrOffset :: Int -> Int -> VM -> VM
+mulWithPtrOffset :: Int64 -> Int64 -> VM -> VM
 mulWithPtrOffset x off vm = if y /= 0 then addWithPtrOffset y off vm else vm
     where
         p = ptr vm
         m = mem vm
-        y = fromIntegral (m !! p) * x
+        y = x * fromIntegral (B.index m p)
 
-runLoop :: [Inst] -> VM -> IO VM
+runScan :: Char -> VM -> VM
+runScan x vm
+    | getWithPtrOffset 0 vm == 0 = vm
+    | x == 'r' = searchRight vm
+    | x == 'l' = searchLeft vm
+    | otherwise = error $ "unexpected scan direction `" ++ [x] ++ "`"
+    where
+        m = mem vm
+        p = ptr vm
+        l = B.take p m
+        r = B.drop p m
+        f _ b = b
+        g a b = negate $ a - b
+        searchRight vm = let i = searchZero B.findIndex f g r l in VM (addPtrOffset p i) m
+        searchLeft vm = let i = searchZero B.findIndexEnd g f l r in VM (addPtrOffset p i) m
+        searchZero f g h xs ys =
+            case f (==0) xs of
+                Just j -> g (B.length xs) j
+                Nothing -> searchZero f h g ys xs
+
+runLoop :: ByteCode -> VM -> IO VM
 runLoop is vm
     | getWithPtrOffset 0 vm == 0 = return vm
     | otherwise = foldM runInst vm is >>= runLoop is
 
 runInst :: VM -> Inst -> IO VM
 runInst vm Nop = return vm
-runInst vm i@(Add x off) = return $ addWithPtrOffset x off vm
-runInst vm i@(Move off) = return $ VM (addPtrOffset (ptr vm) off) (mem vm)
-runInst vm i@(Input off) = readLn >>= \x -> return $ setWithPtrOffset x off vm
-runInst vm i@(Output off) = (putStr [chr $ fromIntegral $ getWithPtrOffset off vm]) >> return vm
-runInst vm i@(Clear off) = return $ setWithPtrOffset 0 off vm
-runInst vm i@(Mul x off) = return $ mulWithPtrOffset x off vm
-runInst vm i@(Loop is) = runLoop is vm
+runInst vm (Add x off) = return $ addWithPtrOffset x off vm
+runInst vm (Move off) = return $ VM (addPtrOffset (ptr vm) off) (mem vm)
+runInst vm (Input off) = (fromIntegral . ord . head) <$> getLine >>= \x -> return $ setWithPtrOffset x off vm
+runInst vm (Output off) = (putStr [chr $ fromIntegral $ getWithPtrOffset off vm]) >> return vm
+runInst vm (Clear off) = return $ setWithPtrOffset 0 off vm
+runInst vm (Mul x off) = return $ mulWithPtrOffset x off vm
+runInst vm (Scan x) = return $ runScan x vm
+runInst vm (Loop is) = runLoop is vm
 
 runByteCode :: ByteCode -> IO ()
 runByteCode is = foldM runInst initVM is >> putStrLn ""
 
 runFile :: String -> Int -> IO ()
-runFile f lvl = parseFile f >>= runByteCode . optimize lvl
+runFile f lvl = parseFile f >>= \is -> let is' = optimize lvl is in is' `seq` runByteCode is'
