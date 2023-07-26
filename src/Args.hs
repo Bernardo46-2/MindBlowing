@@ -7,8 +7,9 @@ module Args (
     hasHelpFlag,
     hasAssemblyFlag,
     hasByteCodeFlag,
-    hasInterpretFlag,
-    hasVersionFlag
+    hasRunFlag,
+    hasVersionFlag,
+    hasCFlag
 ) where
 
 import Data.List (isPrefixOf)
@@ -22,7 +23,8 @@ data Arg
     | Help Bool
     | Assembly Bool
     | ByteCode Bool
-    | Interpret Bool
+    | Run Bool
+    | C Bool
     | Version Bool
     deriving Show
 
@@ -39,7 +41,8 @@ initArgs = [
         Help False,
         Assembly False,
         ByteCode False,
-        Interpret False,
+        Run False,
+        C False,
         Version False
     ]
 
@@ -61,11 +64,14 @@ hasAssemblyFlag xs = let Assembly x = xs !! 4 in x
 hasByteCodeFlag :: Args -> Bool
 hasByteCodeFlag xs = let ByteCode x = xs !! 5 in x
 
-hasInterpretFlag :: Args -> Bool 
-hasInterpretFlag xs = let Interpret x = xs !! 6 in x
+hasRunFlag :: Args -> Bool 
+hasRunFlag xs = let Run x = xs !! 6 in x
+
+hasCFlag :: Args -> Bool
+hasCFlag xs = let C x = xs !! 7 in x
 
 hasVersionFlag :: Args -> Bool
-hasVersionFlag xs = let Version x = xs !! 7 in x
+hasVersionFlag xs = let Version x = xs !! 8 in x
 
 parseArgs :: [String] -> Args
 parseArgs = go initArgs
@@ -77,7 +83,8 @@ parseArgs = go initArgs
             | x == "-h" || x == "--help" = go (replace 3 (Help True) acc) xs
             | x == "-S" = go (replace 4 (Assembly True) acc) xs
             | x == "-B" = go (replace 5 (ByteCode True) acc) xs
-            | x == "run" = go (replace 6 (Interpret True) acc) xs
-            | x == "-v" || x == "--version" = go (replace 7 (Version True) acc) xs
+            | x == "-r" || x == "run" = go (replace 6 (Run True) acc) xs
+            | x == "-C" = go (replace 7 (C True) acc) xs
+            | x == "-v" || x == "--version" = go (replace 8 (Version True) acc) xs
             | not ("-" `isPrefixOf` x) = go (replace 0 (InFile x) acc) xs
             | otherwise = error $ "Args: Invalid Argument `" ++ x ++ "`"

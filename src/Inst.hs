@@ -12,6 +12,6 @@ data Inst
     | Input Int
     | Output Int
     | Clear Int
-    | Mul Int Int Int
+    | Mul Int Int
     | Loop ByteCode
-    deriving Show
+    deriving (Eq, Show)

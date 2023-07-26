@@ -1,7 +1,7 @@
 module ByteCode (
     toByteCode,
     instsToByteCode,
-    fileToByteCode
+    compileToByteCode
 ) where
 
 import Inst
@@ -18,7 +18,7 @@ toByteCode (Move x) = "\tmove " ++ show x ++ "\n"
 toByteCode (Input off) = "\tinput " ++ show off ++ "\n"
 toByteCode (Output off) = "\tprint " ++ show off ++ "\n"
 toByteCode (Clear off) = "\tclear " ++ show off ++ "\n"
-toByteCode (Mul x y off) = "\tmul " ++ show x ++ " " ++ show y ++ " " ++ show off ++ "\n"
+toByteCode (Mul x off) = "\tmul " ++ show x ++ " " ++ show off ++ "\n"
 toByteCode (Loop xs) = concat $ toByteCode <$> xs
 
 instsToByteCode :: ByteCode -> String
@@ -35,5 +35,5 @@ instsToByteCode = snd . go 0
             let (l', s) = go l is
             in  (l', toByteCode i ++ s)
 
-fileToByteCode :: String -> String -> Int -> IO ()
-fileToByteCode inf outf lvl = parseFile inf >>= \is -> writeFile outf $ fileStart ++ instsToByteCode (optimize lvl is)
+compileToByteCode :: String -> String -> Int -> IO ()
+compileToByteCode inf outf lvl = parseFile inf >>= \is -> writeFile outf $ fileStart ++ instsToByteCode (optimize lvl is)
