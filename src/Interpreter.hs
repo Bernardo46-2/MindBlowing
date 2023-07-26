@@ -89,4 +89,4 @@ runByteCode :: ByteCode -> IO ()
 runByteCode is = foldM runInst initVM is >> putStrLn ""
 
 runFile :: String -> Int -> IO ()
-runFile f lvl = parseFile f >>= \is -> let is' = optimize lvl is in is' `seq` runByteCode is'
+runFile f lvl = parseFile f >>= runByteCode . optimize lvl
