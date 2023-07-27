@@ -1,9 +1,10 @@
 module Interpreter (
     runFile,
-    runByteCode
+    runByteCode,
+    runInteractiveInterpreter
 ) where
 
-import Control.Monad (foldM, forever)
+import Control.Monad (foldM, forever, unless)
 import Data.Word (Word8)
 import Data.Char (chr, ord)
 import Data.Int (Int64)
@@ -11,7 +12,7 @@ import qualified Data.ByteString.Lazy as B
 
 import Inst
 import Consts (memSize, memSizeI64)
-import Parser (parseFile)
+import Parser (parseFile, parseCode)
 import Optimizer (optimize)
 
 data VM = VM { ptr :: Int64, mem :: B.ByteString } deriving Show
@@ -85,8 +86,14 @@ runInst vm (Mul x off) = return $ mulWithPtrOffset x off vm
 runInst vm (Scan x) = return $ runScan x vm
 runInst vm (Loop is) = runLoop is vm
 
-runByteCode :: ByteCode -> IO ()
-runByteCode is = foldM runInst initVM is >> putStrLn ""
+runByteCode :: VM -> ByteCode -> IO VM
+runByteCode vm is = foldM runInst vm is >>= \vm' -> putStrLn "" >> return vm'
 
 runFile :: String -> Int -> IO ()
-runFile f lvl = parseFile f >>= runByteCode . optimize lvl
+runFile f lvl = parseFile f >>= runByteCode initVM . optimize lvl >> return ()
+
+runInteractiveInterpreter :: Int -> IO ()
+runInteractiveInterpreter lvl = getLine >>= go initVM
+    where
+        go vm s = unless (null s) $ runByteCode vm (optimize lvl (parseCode s)) >>= \vm' -> getLine >>= go vm'
+

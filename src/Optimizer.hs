@@ -2,7 +2,7 @@ module Optimizer (optimize) where
 
 import Inst
 
--- TODO: cancel_operations optimization (check for loops and IO) - lvl 3
+-- TODO: cancel_operations optimization (check for loops and IO and remove redundant first ops) - lvl 3
 
 ---------------------------------------------------------------------------------------------------------------
 -- Level 1 Optimization

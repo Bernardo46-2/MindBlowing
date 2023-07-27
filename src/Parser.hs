@@ -1,5 +1,4 @@
 module Parser (
-    initParser,
     parseCode,
     parseFile
 ) where
@@ -87,8 +86,11 @@ parseCodeWhile f p
     | f p = (parseCodeWhile f . move . parseInst) p
     | otherwise = p
 
-parseCode :: Parser -> ByteCode
-parseCode = reverse . bytecode . parseCodeWhile (not . null . code)
+runParser :: Parser -> ByteCode
+runParser = reverse . bytecode . parseCodeWhile (not . null . code)
+
+parseCode :: String -> ByteCode
+parseCode = runParser . initParser
 
 parseFile :: String -> IO ByteCode
-parseFile f = readFile f >>= return . parseCode . initParser
+parseFile f = readFile f >>= return . runParser . initParser

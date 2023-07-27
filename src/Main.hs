@@ -3,10 +3,10 @@ import Data.List (isPrefixOf)
 import Data.Char (isSpace)
 
 import Args 
+import Compiler
 import Consts (version)
-import Parser (initParser, parseCode)
-import Interpreter (runFile)
-import ByteCode (compileToByteCode)
+import Parser (parseCode)
+import Interpreter (runFile, runInteractiveInterpreter)
 
 ---------------------------------------------------------------------------------------------------------------
 -- TODO
@@ -16,7 +16,7 @@ import ByteCode (compileToByteCode)
 -- Rewrite args parser -> DONE
 -- Compile to bytecode -> DONE
 -- Allow different levels of optimization
--- Write a live interpreter 
+-- Write an interactive interpreter
 -- Compile to C
 -- Allow choosing specific optimizations
 -- Compile to assembly
@@ -46,9 +46,10 @@ handleFlags args
     | hasVersionFlag args = printVersion
     | hasRunFlag args = runFile (getInFile args) (getOptimizationLevel args)
     | hasByteCodeFlag args = compileToByteCode (getInFile args) (getOutFile args) (getOptimizationLevel args)
-    | hasCFlag args = error "TODO: compile to C"
+    | hasCFlag args = compileToC (getInFile args) (getOutFile args) (getOptimizationLevel args)
     | hasAssemblyFlag args = error "TODO: compile to assembly"
-    | otherwise = error "TODO: compile to ELF"
+    | hasBuildFlag args = error "TODO: compile to ELF"
+    | otherwise = runInteractiveInterpreter $ getOptimizationLevel args
 
 main :: IO ()
 main = getArgs >>= handleFlags . parseArgs

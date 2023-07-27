@@ -9,7 +9,8 @@ module Args (
     hasByteCodeFlag,
     hasRunFlag,
     hasVersionFlag,
-    hasCFlag
+    hasCFlag,
+    hasBuildFlag
 ) where
 
 import Data.List (isPrefixOf)
@@ -25,13 +26,14 @@ data Arg
     | ByteCode Bool
     | Run Bool
     | C Bool
+    | Build Bool
     | Version Bool
     deriving Show
 
 type Args = [Arg]
 
 outFile :: String
-outFile = "a.txt"
+outFile = "a"
 
 initArgs :: Args
 initArgs = [
@@ -43,7 +45,8 @@ initArgs = [
         ByteCode False,
         Run False,
         C False,
-        Version False
+        Version False,
+        Build False
     ]
 
 getInFile :: Args -> String
@@ -73,6 +76,9 @@ hasCFlag xs = let C x = xs !! 7 in x
 hasVersionFlag :: Args -> Bool
 hasVersionFlag xs = let Version x = xs !! 8 in x
 
+hasBuildFlag :: Args -> Bool
+hasBuildFlag xs = let Build x = xs !! 9 in x
+
 parseArgs :: [String] -> Args
 parseArgs = go initArgs
     where
@@ -86,5 +92,6 @@ parseArgs = go initArgs
             | x == "-r" || x == "run" = go (replace 6 (Run True) acc) xs
             | x == "-C" = go (replace 7 (C True) acc) xs
             | x == "-v" || x == "--version" = go (replace 8 (Version True) acc) xs
+            | x == "build" = go (replace 9 (Build True) acc) xs
             | not ("-" `isPrefixOf` x) = go (replace 0 (InFile x) acc) xs
             | otherwise = error $ "Args: Invalid Argument `" ++ x ++ "`"
