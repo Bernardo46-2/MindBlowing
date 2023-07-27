@@ -17,11 +17,6 @@ removeInitialLoop = dropWhile isLoop
         isLoop (Loop _) = True
         isLoop _ = False
 
-sumOps :: Inst -> Inst -> Maybe Inst
-sumOps (Add x off) (Add y _) = Just (Add (x+y) off)
-sumOps (Move x) (Move y) = Just (Move (x+y))
-sumOps _ _ = Nothing
-
 compressOps :: ByteCode -> ByteCode
 compressOps [] = []
 compressOps (i:is) = go [i] is
@@ -32,6 +27,9 @@ compressOps (i:is) = go [i] is
             case sumOps x i of
                 Just i' -> go (i':xs) is
                 Nothing -> go (i:acc) is
+        sumOps (Add x off) (Add y _) = Just (Add (x+y) off)
+        sumOps (Move x) (Move y) = Just (Move (x+y))
+        sumOps _ _ = Nothing
 
 optimizeClearLoops :: ByteCode -> ByteCode
 optimizeClearLoops = go []

@@ -12,12 +12,8 @@ import Interpreter (runFile, runInteractiveInterpreter)
 -- TODO
 ---------------------------------------------------------------------------------------------------------------
 
--- Write an interpreter -> DONE
--- Rewrite args parser -> DONE
--- Compile to bytecode -> DONE
--- Allow different levels of optimization
--- Write an interactive interpreter
--- Compile to C
+-- Compile to C -> review some instructions
+-- Allow different levels of optimization -> one last optimization to do
 -- Allow choosing specific optimizations
 -- Compile to assembly
 -- Compile to ELF (Need to think this through yet)
@@ -45,10 +41,10 @@ handleFlags args
     | hasHelpFlag args = printHelp
     | hasVersionFlag args = printVersion
     | hasRunFlag args = runFile (getInFile args) (getOptimizationLevel args)
-    | hasByteCodeFlag args = compileToByteCode (getInFile args) (getOutFile args) (getOptimizationLevel args)
-    | hasCFlag args = compileToC (getInFile args) (getOutFile args) (getOptimizationLevel args)
-    | hasAssemblyFlag args = error "TODO: compile to assembly"
-    | hasBuildFlag args = error "TODO: compile to ELF"
+    | hasByteCodeFlag args = compileTo "ByteCode" (getInFile args) (getOutFile args) (getOptimizationLevel args)
+    | hasCFlag args = compileTo "C" (getInFile args) (getOutFile args) (getOptimizationLevel args)
+    | hasAssemblyFlag args = compileTo "asm" (getInFile args) (getOutFile args) (getOptimizationLevel args)
+    | hasBuildFlag args = compileTo "elf" (getInFile args) (getOutFile args) (getOptimizationLevel args)
     | otherwise = runInteractiveInterpreter $ getOptimizationLevel args
 
 main :: IO ()

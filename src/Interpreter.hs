@@ -8,6 +8,7 @@ import Control.Monad (foldM, forever, unless)
 import Data.Word (Word8)
 import Data.Char (chr, ord)
 import Data.Int (Int64)
+import Data.List (isPrefixOf)
 import qualified Data.ByteString.Lazy as B
 
 import Inst
@@ -16,6 +17,12 @@ import Parser (parseFile, parseCode)
 import Optimizer (optimize)
 
 data VM = VM { ptr :: Int64, mem :: B.ByteString } deriving Show
+
+-- TODO: create a good interactive console
+
+------------------------------------------------------------------------------------------------------------------------
+-- Interpreter
+------------------------------------------------------------------------------------------------------------------------
 
 initVM :: VM
 initVM = VM 0 $ B.pack $ take memSize $ repeat 0
@@ -79,8 +86,8 @@ runInst :: VM -> Inst -> IO VM
 runInst vm Nop = return vm
 runInst vm (Add x off) = return $ addWithPtrOffset x off vm
 runInst vm (Move off) = return $ VM (addPtrOffset (ptr vm) off) (mem vm)
-runInst vm (Input off) = (fromIntegral . ord . head) <$> getLine >>= \x -> return $ setWithPtrOffset x off vm
-runInst vm (Output off) = (putStr [chr $ fromIntegral $ getWithPtrOffset off vm]) >> return vm
+runInst vm (Input off) = fromIntegral . ord . head <$> getLine >>= \x -> return $ setWithPtrOffset x off vm
+runInst vm (Output off) = putStr [chr $ fromIntegral $ getWithPtrOffset off vm] >> return vm
 runInst vm (Clear off) = return $ setWithPtrOffset 0 off vm
 runInst vm (Mul x off) = return $ mulWithPtrOffset x off vm
 runInst vm (Scan x) = return $ runScan x vm
@@ -92,8 +99,36 @@ runByteCode vm is = foldM runInst vm is >>= \vm' -> putStrLn "" >> return vm'
 runFile :: String -> Int -> IO ()
 runFile f lvl = parseFile f >>= runByteCode initVM . optimize lvl >> return ()
 
-runInteractiveInterpreter :: Int -> IO ()
-runInteractiveInterpreter lvl = getLine >>= go initVM
-    where
-        go vm s = unless (null s) $ runByteCode vm (optimize lvl (parseCode s)) >>= \vm' -> getLine >>= go vm'
+------------------------------------------------------------------------------------------------------------------------
+-- Interactive Console
+------------------------------------------------------------------------------------------------------------------------
 
+-- ptr: 0
+-- mem[-2..2]: [0,0,0,0,0]
+--                  p
+
+prompt :: String
+prompt = "## "
+
+printAroundPtr :: Int64 -> VM -> IO ()
+printAroundPtr off vm = 
+    putStrLn $ "ptr: " ++ show p ++ "\n" ++
+    "mem[ptr-" ++ show off ++ "..ptr+" ++ show off ++ "]: " ++ 
+    show ((\x -> getWithPtrOffset x vm) <$> xs)
+    where
+        p = ptr vm
+        m = mem vm
+        xs = [negate off..off]
+
+runCommand :: String -> IO ()
+runCommand = undefined
+
+handleInput :: Int -> String -> VM -> IO VM
+handleInput lvl s vm
+    | ":" `isPrefixOf` s = runCommand (tail s) >> return vm
+    | otherwise = runByteCode vm (optimize lvl (parseCode s))
+
+runInteractiveInterpreter :: Int -> IO ()
+runInteractiveInterpreter lvl = printAroundPtr 2 initVM >> putStr prompt >> getLine >>= go initVM
+    where
+        go vm s = unless (null s) $ runByteCode vm (optimize lvl (parseCode s)) >>= \vm' -> putStr prompt >> getLine >>= go vm'

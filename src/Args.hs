@@ -15,6 +15,7 @@ module Args (
 
 import Data.List (isPrefixOf)
 
+import Consts (outFile)
 import Utils (trim, replace)
 
 data Arg
@@ -31,9 +32,6 @@ data Arg
     deriving Show
 
 type Args = [Arg]
-
-outFile :: String
-outFile = "a"
 
 initArgs :: Args
 initArgs = [
