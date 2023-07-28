@@ -2,20 +2,12 @@ module Optimizer (optimize) where
 
 import Inst
 
--- TODO: cancel_operations optimization (check for loops and IO and remove redundant first ops) - lvl 3
-
 -------------------------------------------------------------------------------------------------------------------
 -- Level 1 Optimization
 -------------------------------------------------------------------------------------------------------------------
 
 removeNops :: ByteCode -> ByteCode
-removeNops = filter (/=Nop)
-
-removeInitialLoop :: ByteCode -> ByteCode
-removeInitialLoop = dropWhile isLoop
-    where
-        isLoop (Loop _) = True
-        isLoop _ = False
+removeNops = filter (not . isNop)
 
 compressOps :: ByteCode -> ByteCode
 compressOps [] = []
@@ -71,6 +63,28 @@ adjustOffsets = go [] 0
 -- Level 3 Optimization
 -------------------------------------------------------------------------------------------------------------------
 
+removeUselessInitialOps :: ByteCode -> ByteCode
+removeUselessInitialOps = dropWhile (\i -> isLoop i || isClear i || isMul i || isNop i || isScan i)
+
+cancelUselessAdds :: ByteCode -> ByteCode
+cancelUselessAdds = go []
+    where
+        go acc [] = reverse acc
+        go (a@(Add _ off):acc) (i@(Clear off'):is)
+            | off == off' = go (i:acc) is
+            | otherwise = go (i:a:acc) is
+        go acc (i:is) = go (i:acc) is
+
+clearToSet :: ByteCode -> ByteCode
+clearToSet = go []
+    where
+        go acc [] = reverse acc
+        go (c@(Clear off):acc) (i@(Add x off'):is)
+            | off == off' = go (Set x off:acc) is
+            | otherwise = go (i:c:acc) is
+        go acc (Loop xs:is) = go (Loop (clearToSet xs):acc) is
+        go acc (i:is) = go (i:acc) is
+
 loopToMul :: ByteCode -> ByteCode
 loopToMul = go [] . adjustOffsets
     where
@@ -102,7 +116,7 @@ optimizeMulLoops = reverse . foldl (\acc x -> tryOptimizeMulLoop x ++ acc) []
 
 optimize :: Int -> ByteCode -> ByteCode
 optimize 0 = id
-optimize 1 = compressOps . optimizeClearLoops . removeInitialLoop . removeNops
+optimize 1 = compressOps . optimizeClearLoops . removeNops
 optimize 2 = optimizeScanLoops . adjustOffsets . optimize 1
-optimize 3 = optimizeMulLoops . optimize 2
+optimize 3 = removeUselessInitialOps . cancelUselessAdds . clearToSet . optimizeMulLoops . optimize 2
 optimize lvl = error $ "Optimization level `" ++ show lvl ++ "` invalid"

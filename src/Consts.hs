@@ -12,7 +12,7 @@ memSizeI64 :: Int64
 memSizeI64 = 30_000
 
 prompt :: String
-prompt = "## "
+prompt = "BF: "
 
 outFile :: String
 outFile = "a"
