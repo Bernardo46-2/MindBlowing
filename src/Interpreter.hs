@@ -1,6 +1,5 @@
 module Interpreter (
     runFile,
-    runByteCode,
     runInteractiveInterpreter
 ) where
 
@@ -12,7 +11,8 @@ import Data.List (isPrefixOf)
 import qualified Data.ByteString.Lazy as B
 
 import Inst
-import Consts (memSize, memSizeI64)
+import Consts (version, memSize, memSizeI64, prompt)
+import Utils (replaceBS)
 import Parser (parseFile, parseCode)
 import Optimizer (optimize)
 
@@ -39,7 +39,7 @@ setWithPtrOffset x off vm = VM p m'
         p = ptr vm
         m = mem vm
         i = addPtrOffset p off
-        m' = B.take i m <> B.pack [x] <> B.drop (i+1) m
+        m' = replaceBS i x m
 
 addWithPtrOffset :: Int64 -> Int64 -> VM -> VM
 addWithPtrOffset x off vm = VM p m'
@@ -48,7 +48,7 @@ addWithPtrOffset x off vm = VM p m'
         m = mem vm
         i = addPtrOffset p off
         y = fromIntegral $ B.index m i
-        m' = B.take i m <> B.pack [fromIntegral (x+y)] <> B.drop (i+1) m
+        m' = replaceBS i (fromIntegral (x+y)) m
 
 mulWithPtrOffset :: Int64 -> Int64 -> VM -> VM
 mulWithPtrOffset x off vm = if y /= 0 then addWithPtrOffset y off vm else vm
@@ -100,15 +100,27 @@ runFile :: String -> Int -> IO ()
 runFile f lvl = parseFile f >>= runByteCode initVM . optimize lvl >> return ()
 
 ------------------------------------------------------------------------------------------------------------------------
--- Interactive Console
+-- Interactive Console - STILL IN PROGRESS
 ------------------------------------------------------------------------------------------------------------------------
 
 -- ptr: 0
 -- mem[-2..2]: [0,0,0,0,0]
 --                  p
 
-prompt :: String
-prompt = "## "
+-- commands todo
+-- :help -> print interactive console help info
+-- :print-ptr <offset> -> print memory around ptr
+-- :load <file> -> load file (if found) and run it, sending the current vm and receiving the new one
+-- :reset -> reset vm
+-- :opt <lvl> -> change optimization level
+-- :optc <[opts]> -> choose specific optimizations
+-- :{ -> open multiline input
+-- :} -> close multiline input
+-- :prompt <str> -> change prompt
+
+interactiveInterpreterIntro :: IO ()
+interactiveInterpreterIntro = putStrLn $
+    "MindBlowing Interactive Console, version " ++ version ++ ", type `:help` for more info.\n\n"
 
 printAroundPtr :: Int64 -> VM -> IO ()
 printAroundPtr off vm = 
@@ -129,6 +141,6 @@ handleInput lvl s vm
     | otherwise = runByteCode vm (optimize lvl (parseCode s))
 
 runInteractiveInterpreter :: Int -> IO ()
-runInteractiveInterpreter lvl = printAroundPtr 2 initVM >> putStr prompt >> getLine >>= go initVM
+runInteractiveInterpreter lvl = putStr prompt >> getLine >>= go initVM
     where
         go vm s = unless (null s) $ runByteCode vm (optimize lvl (parseCode s)) >>= \vm' -> putStr prompt >> getLine >>= go vm'

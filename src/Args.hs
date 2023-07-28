@@ -16,7 +16,7 @@ module Args (
 import Data.List (isPrefixOf)
 
 import Consts (outFile)
-import Utils (trim, replace)
+import Utils (trim, trimLeft, replace)
 
 data Arg
     = InFile String
@@ -83,13 +83,13 @@ parseArgs = go initArgs
         go acc [] = acc
         go acc (x:xs)
             | x == "-o" = go (replace 1 (OutFile (head xs)) acc) (tail xs)
-            | "-O" `isPrefixOf` x = go (replace 2 (Optimize (read (drop 2 x))) acc) xs
+            | "-O" `isPrefixOf` x = go (replace 2 (Optimize (read (trimLeft (drop 2 x)))) acc) xs
             | x == "-h" || x == "--help" = go (replace 3 (Help True) acc) xs
             | x == "-S" = go (replace 4 (Assembly True) acc) xs
             | x == "-B" = go (replace 5 (ByteCode True) acc) xs
             | x == "-r" || x == "run" = go (replace 6 (Run True) acc) xs
             | x == "-C" = go (replace 7 (C True) acc) xs
             | x == "-v" || x == "--version" = go (replace 8 (Version True) acc) xs
-            | x == "build" = go (replace 9 (Build True) acc) xs
+            | x == "-b" || x == "build" = go (replace 9 (Build True) acc) xs
             | not ("-" `isPrefixOf` x) = go (replace 0 (InFile x) acc) xs
             | otherwise = error $ "Args: Invalid Argument `" ++ x ++ "`"

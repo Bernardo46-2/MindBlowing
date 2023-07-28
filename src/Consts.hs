@@ -11,6 +11,9 @@ memSize = 30_000
 memSizeI64 :: Int64
 memSizeI64 = 30_000
 
+prompt :: String
+prompt = "## "
+
 outFile :: String
 outFile = "a"
 
@@ -24,4 +27,4 @@ assemblyFileExtension :: String
 assemblyFileExtension = ".s"
 
 binaryFileExtension :: String
-binaryFileExtension = []
+binaryFileExtension = ".out"

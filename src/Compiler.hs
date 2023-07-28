@@ -1,10 +1,13 @@
 module Compiler (compileTo) where
 
+import System.Process (system)
+
 import Inst
 import Consts (cFileExtension, byteCodeFileExtension)
 import Parser (parseFile)
 import Optimizer (optimize)
-import System.Process (system)
+
+-- review C scan instruction
 
 ---------------------------------------------------------------------------------------------------------------
 -- BF to ByteCode

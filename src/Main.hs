@@ -31,7 +31,19 @@ optimizationStrategies = "http://calmerthanyouare.org/2015/01/07/optimizing-brai
 ---------------------------------------------------------------------------------------------------------------
 
 printHelp :: IO ()
-printHelp = error "TODO: print help"
+printHelp = putStrLn $ "\n" ++
+    "MindBlowing v" ++ version ++ "\n\n" ++
+    "Usage:\n" ++
+    "    runhaskell Main.hs [command-line-options-and-input-file]\n\n" ++
+    "Commands:\n" ++
+    "    -h | --help                 print Help\n" ++
+    "    -v | --version              print version\n" ++
+    "    -S                          compile to assembly\n" ++
+    "    -C                          compile to C\n" ++
+    "    -o                          rename output file\n" ++
+    "    -r | run                    interpret file\n" ++
+    "    -b | build                  compile file to binary\n" ++
+    "    -O0 | -O1 | -O2 | -O3       choose optimization level\n\n"
 
 printVersion :: IO ()
 printVersion = putStrLn $ "The Magnificent MindBlowing Brainfuck Compilation System, version " ++ version
@@ -45,7 +57,7 @@ handleFlags args
     | hasCFlag args = compileTo "C" (getInFile args) (getOutFile args) (getOptimizationLevel args)
     | hasAssemblyFlag args = compileTo "asm" (getInFile args) (getOutFile args) (getOptimizationLevel args)
     | hasBuildFlag args = compileTo "elf" (getInFile args) (getOutFile args) (getOptimizationLevel args)
-    | otherwise = runInteractiveInterpreter $ getOptimizationLevel args
+    | otherwise = runInteractiveInterpreter $ getOptimizationLevel args -- add a `print help` print
 
 main :: IO ()
 main = getArgs >>= handleFlags . parseArgs
