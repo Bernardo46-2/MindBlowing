@@ -148,18 +148,18 @@ printIntro = putStrLn $
     "MindBlowing Interactive Console, version " ++ version ++ ", type `:help` for more info.\n"
 
 printLiveInterpreterHelp :: LiveInterpreter -> IO LiveInterpreter
-printLiveInterpreterHelp li = putStrLn ( "\n" ++ 
-    ":help                               print interactive console help info\n" ++
-    ":ptr <offset>                       print memory around ptr with <offset> range\n" ++
-    ":load <file>                        load file (if found) and run it, sending in the current vm and receiving the new one\n" ++
-    ":reset                              reset vm\n" ++
-    ":opts <no-arguments>                print current optimization level\n" ++
-    ":opts <[lvl-and-or-opt-flags]>      change optimization level\n" ++
-    ":reset-opts                         reset optimizations to default\n" ++
-    ":{                                  open multiline input\n" ++
-    ":}                                  close multiline input\n" ++
-    ":prompt <str>                       change prompt\n" ++
-    ":quit                               exits the console\n") >>
+printLiveInterpreterHelp li = putStrLn ("\n" ++ 
+    ":help                              print interactive console help info\n" ++
+    ":ptr <offset>                      print memory around ptr with <offset> range\n" ++
+    ":load <file>                       load file (if found) and run it, sending in the current vm and receiving the new one\n" ++
+    ":reset                             reset vm\n" ++
+    ":opts <no-arguments>               print current optimization level\n" ++
+    ":opts <[lvl-and-or-opt-flags]>     change optimization level\n" ++
+    ":reset-opts                        reset optimizations to default\n" ++
+    ":{                                 open multiline input\n" ++
+    ":}                                 close multiline input\n" ++
+    ":prompt <str>                      change prompt\n" ++
+    ":quit                              exits the console\n") >>
     return li
 
 printAroundPtr :: Int64 -> LiveInterpreter -> IO LiveInterpreter
@@ -208,16 +208,16 @@ handleInvalidCommand :: String -> LiveInterpreter -> IO LiveInterpreter
 handleInvalidCommand s li = putStrLn ("Invalid command `" ++ s ++ "`") >> return li
 
 runCommand :: (String, String) -> LiveInterpreter -> IO LiveInterpreter
-runCommand (":help",_) = printLiveInterpreterHelp
-runCommand (":prompt",xs) = return . updatePrompt xs
-runCommand (":reset",_) = return . updateLiveVM initVM
-runCommand (":ptr",xs) = printPtrInfo xs
-runCommand (":load",xs) = tryLoadFile xs
-runCommand (":opts",xs) = handleOptsInput xs
-runCommand (":{",_) = handleMultilineInput
-runCommand (":reset-opts",_) = handleOptsInput [] . updateOpts (0, [])
-runCommand (":quit",_) = handleQuitInput
-runCommand (x,_) = handleInvalidCommand x
+runCommand (":help", _) = printLiveInterpreterHelp
+runCommand (":prompt", xs) = return . updatePrompt xs
+runCommand (":reset", _) = return . updateLiveVM initVM
+runCommand (":ptr", xs) = printPtrInfo xs
+runCommand (":load", xs) = tryLoadFile xs
+runCommand (":opts", xs) = handleOptsInput xs
+runCommand (":{", _) = handleMultilineInput
+runCommand (":reset-opts", _) = handleOptsInput [] . updateOpts (0, [])
+runCommand (":quit", _) = handleQuitInput
+runCommand (x, _) = handleInvalidCommand x
 
 interpretLive :: String -> LiveInterpreter -> IO LiveInterpreter
 interpretLive s li = runByteCode vm code >>= \vm' -> return $ updateLiveVM vm' li

@@ -12,8 +12,6 @@ import Interpreter (runFile, runLiveInterpreter)
 -- TODO
 ---------------------------------------------------------------------------------------------------------------
 
--- Finish live interpreter
--- Allow choosing specific optimizations -> receive opts from input and sort them
 -- Compile to assembly
 -- Compile to ELF (Need to think this through yet)
 
