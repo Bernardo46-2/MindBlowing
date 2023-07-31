@@ -10,13 +10,15 @@ module Args (
     hasRunFlag,
     hasVersionFlag,
     hasCFlag,
-    hasBuildFlag
+    hasBuildFlag,
+    getCustomOptimizations,
+    getOptimizations
 ) where
 
 import Data.List (isPrefixOf)
 
-import Consts (outFile)
-import Utils (trim, trimLeft, replace)
+import Consts (optimizationFlags)
+import Utils (trim, replace)
 
 data Arg
     = InFile String
@@ -29,14 +31,15 @@ data Arg
     | C Bool
     | Build Bool
     | Version Bool
+    | CustomOpts [String]
     deriving Show
 
 type Args = [Arg]
 
 initArgs :: Args
 initArgs = [
-        InFile "",
-        OutFile outFile,
+        InFile [],
+        OutFile [],
         Optimize 0,
         Help False,
         Assembly False,
@@ -44,7 +47,8 @@ initArgs = [
         Run False,
         C False,
         Version False,
-        Build False
+        Build False,
+        CustomOpts []
     ]
 
 getInFile :: Args -> String
@@ -77,13 +81,20 @@ hasVersionFlag xs = let Version x = xs !! 8 in x
 hasBuildFlag :: Args -> Bool
 hasBuildFlag xs = let Build x = xs !! 9 in x
 
+getCustomOptimizations :: Args -> [String]
+getCustomOptimizations xs = let CustomOpts x = xs !! 10 in x
+
+getOptimizations :: Args -> (Int, [String])
+getOptimizations xs = (getOptimizationLevel xs, getCustomOptimizations xs)
+
 parseArgs :: [String] -> Args
 parseArgs = go initArgs
     where
         go acc [] = acc
         go acc (x:xs)
+            | not ("-" `isPrefixOf` x) = go (replace 0 (InFile x) acc) xs
             | x == "-o" = go (replace 1 (OutFile (head xs)) acc) (tail xs)
-            | "-O" `isPrefixOf` x = go (replace 2 (Optimize (read (trimLeft (drop 2 x)))) acc) xs
+            | "-O" `isPrefixOf` x = go (replace 2 (Optimize (read (drop 2 x))) acc) xs
             | x == "-h" || x == "--help" = go (replace 3 (Help True) acc) xs
             | x == "-S" = go (replace 4 (Assembly True) acc) xs
             | x == "-B" = go (replace 5 (ByteCode True) acc) xs
@@ -91,5 +102,5 @@ parseArgs = go initArgs
             | x == "-C" = go (replace 7 (C True) acc) xs
             | x == "-v" || x == "--version" = go (replace 8 (Version True) acc) xs
             | x == "-b" || x == "build" = go (replace 9 (Build True) acc) xs
-            | not ("-" `isPrefixOf` x) = go (replace 0 (InFile x) acc) xs
+            | x `elem` optimizationFlags = go (replace 10 (CustomOpts (x:getCustomOptimizations acc)) acc) xs
             | otherwise = error $ "Args: Invalid Argument `" ++ x ++ "`"

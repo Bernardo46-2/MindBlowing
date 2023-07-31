@@ -1,25 +1,24 @@
 module Interpreter (
     runFile,
-    runInteractiveInterpreter
+    runLiveInterpreter
 ) where
 
-import System.Exit (exitSuccess)
-import Control.Monad (foldM, forever, unless)
+import System.Exit (exitWith, ExitCode (..))
+import Control.Monad (foldM, when)
 import Data.Word (Word8)
-import Data.Char (chr, ord)
+import Data.Char (chr, ord, isDigit)
 import Data.Int (Int64)
-import Data.List (isPrefixOf)
+import Data.List (isPrefixOf, find)
 import qualified Data.ByteString.Lazy as B
 
 import Inst
-import Consts (version, memSize, memSizeI64, prompt)
-import Utils (replaceBS)
+import Consts (version, memSize, prompt, optimizationFlags)
+import Utils (trim, trimLeft, replaceBS, iterateM', readLine, readUntil, safeTail)
 import Parser (parseFile, parseCode)
 import Optimizer (optimize)
+import System.Directory (doesFileExist)
 
 data VM = VM { ptr :: Int64, mem :: B.ByteString } deriving Show
-
--- TODO: create a good interactive console
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Interpreter
@@ -29,7 +28,7 @@ initVM :: VM
 initVM = VM 0 $ B.pack $ take memSize $ repeat 0
 
 addPtrOffset :: Int64 -> Int64 -> Int64
-addPtrOffset p off = (p+off) `mod` memSizeI64
+addPtrOffset p off = (p+off) `mod` memSize
 
 getWithPtrOffset :: Int64 -> VM -> Word8
 getWithPtrOffset off vm = B.index (mem vm) (addPtrOffset (ptr vm) off)
@@ -97,58 +96,152 @@ runInst vm (Scan x) = return $ runScan x vm
 runInst vm (Loop is) = runLoop is vm
 
 runByteCode :: VM -> ByteCode -> IO VM
-runByteCode vm is = foldM runInst vm is >>= \vm' -> putStrLn "" >> return vm'
+runByteCode vm is = foldM runInst vm is >>= return
 
-runFile :: String -> Int -> IO ()
-runFile f lvl = parseFile f >>= runByteCode initVM . optimize lvl >> return ()
+runFile :: String -> (Int, [String]) -> IO VM
+runFile f opt = parseFile f >>= runByteCode initVM . optimize opt
 
 ------------------------------------------------------------------------------------------------------------------------
--- Interactive Console - STILL IN PROGRESS
+-- Interactive Console
 ------------------------------------------------------------------------------------------------------------------------
 
--- ptr: 0
--- mem[-2..2]: [0,0,0,0,0]
---                  p
+data LiveInterpreter = LiveInterpreter { 
+    prmpt :: String,
+    opt :: (Int, [String]),
+    liveVM :: VM
+}
 
--- commands todo
--- :help -> print interactive console help info - DONE
--- :print-ptr <offset> -> print memory around ptr
--- :load <file> -> load file (if found) and run it, sending the current vm and receiving the new one
--- :reset -> reset vm
--- :opt <lvl> -> change optimization level
--- :optc <[opts]> -> choose specific optimizations
--- :{ -> open multiline input
--- :} -> close multiline input
--- :prompt <str> -> change prompt
--- :quit -> exits the console - DONE
+initLiveInterpreter :: (Int, [String]) -> LiveInterpreter
+initLiveInterpreter opts =
+    LiveInterpreter {
+        prmpt = prompt,
+        opt = opts,
+        liveVM = initVM
+    }
 
--- probably gonna have to rewrite everything below
+updateLiveVM :: VM -> LiveInterpreter -> LiveInterpreter
+updateLiveVM vm li =
+    LiveInterpreter {
+        prmpt = prmpt li,
+        opt = opt li,
+        liveVM = vm
+    }
 
-interactiveInterpreterIntro :: IO ()
-interactiveInterpreterIntro = putStrLn $
-    "MindBlowing Interactive Console, version " ++ version ++ ", type `:help` for more info.\n\n"
+updateOpts :: (Int, [String]) -> LiveInterpreter -> LiveInterpreter
+updateOpts opts li =
+    LiveInterpreter {
+        prmpt = prmpt li,
+        opt = opts,
+        liveVM = liveVM li
+    }
 
-printAroundPtr :: Int64 -> VM -> IO VM
-printAroundPtr off vm = 
-    putStrLn ("ptr: " ++ show p ++ "\n" ++
-    "mem[ptr-" ++ show off ++ "..ptr+" ++ show off ++ "]: " ++ 
-    show ((\x -> getWithPtrOffset x vm) <$> xs)) >>
-    return vm
+updatePrompt :: String -> LiveInterpreter -> LiveInterpreter
+updatePrompt p li =
+    LiveInterpreter {
+        prmpt = p,
+        opt = opt li,
+        liveVM = liveVM li
+    }
+
+printIntro :: IO ()
+printIntro = putStrLn $
+    "MindBlowing Interactive Console, version " ++ version ++ ", type `:help` for more info.\n"
+
+printLiveInterpreterHelp :: LiveInterpreter -> IO LiveInterpreter
+printLiveInterpreterHelp li = putStrLn ( "\n" ++ 
+    ":help                               print interactive console help info\n" ++
+    ":ptr <offset>                       print memory around ptr with <offset> range\n" ++
+    ":load <file>                        load file (if found) and run it, sending in the current vm and receiving the new one\n" ++
+    ":reset                              reset vm\n" ++
+    ":opts <no-arguments>                print current optimization level\n" ++
+    ":opts <[lvl-and-or-opt-flags]>      change optimization level\n" ++
+    ":reset-opts                         reset optimizations to default\n" ++
+    ":{                                  open multiline input\n" ++
+    ":}                                  close multiline input\n" ++
+    ":prompt <str>                       change prompt\n" ++
+    ":quit                               exits the console\n") >>
+    return li
+
+printAroundPtr :: Int64 -> LiveInterpreter -> IO LiveInterpreter
+printAroundPtr off li =
+    putStr (
+        "ptr = " ++ show p ++ "\n" ++ 
+        (foldr (\ x acc -> "mem[ptr" ++ 
+        (if x < 0 then show x else if x > 0 then "+" ++ show x else []) ++ "] = " ++ 
+        show (getWithPtrOffset x vm) ++ "\n" ++ acc) [] [-off..off])) >>
+    return li
     where
+        vm = liveVM li
         p = ptr vm
         m = mem vm
-        xs = [negate off..off]
 
-runCommand :: String -> IO VM
-runCommand ":reset" = return initVM
-runCommand ":quit" = exitSuccess
+tryUpdatePrompt :: String -> LiveInterpreter -> LiveInterpreter
+tryUpdatePrompt [] = id
+tryUpdatePrompt xs = updatePrompt xs
 
-handleInput :: Int -> String -> VM -> IO VM
-handleInput lvl s vm
-    | ":" `isPrefixOf` s = runCommand s >> return vm
-    | otherwise = runByteCode vm (optimize lvl (parseCode s))
+printPtrInfo :: String -> LiveInterpreter -> IO LiveInterpreter
+printPtrInfo [] = printAroundPtr 0
+printPtrInfo s = printAroundPtr (read (trim s))
 
-runInteractiveInterpreter :: Int -> IO ()
-runInteractiveInterpreter lvl = putStr prompt >> getLine >>= \s -> handleInput lvl s initVM >>= \vm -> go vm s
+tryLoadFile :: String -> LiveInterpreter -> IO LiveInterpreter
+tryLoadFile [] li = putStrLn "Error: No input file" >> return li
+tryLoadFile s li = doesFileExist s >>= \b -> 
+    if b then runFile s (opt li) >>= \vm -> return $ updateLiveVM vm li
+    else putStrLn "Error: File not found" >> return li
+
+handleOptsInput :: String -> LiveInterpreter -> IO LiveInterpreter
+handleOptsInput [] li = putStrLn ("current optimizations (lvl, other opts): " ++ show (opt li)) >> return li
+handleOptsInput s li = 
+    let xs = words s
+        x = case find (all isDigit) xs of
+            Just y -> y
+            Nothing -> "0"
+    in  handleOptsInput [] $ updateOpts (read x, filter (`elem` optimizationFlags) xs) li
+
+handleMultilineInput :: LiveInterpreter -> IO LiveInterpreter
+handleMultilineInput li = readUntil ":}" >>= runByteCode (liveVM li) . parseCode >>= \vm -> return $ updateLiveVM vm li
+
+handleQuitInput :: LiveInterpreter -> IO LiveInterpreter
+handleQuitInput _ = exitWith ExitSuccess
+
+handleInvalidCommand :: String -> LiveInterpreter -> IO LiveInterpreter
+handleInvalidCommand s li = putStrLn ("Invalid command `" ++ s ++ "`") >> return li
+
+runCommand :: (String, String) -> LiveInterpreter -> IO LiveInterpreter
+runCommand (":help",_) = printLiveInterpreterHelp
+runCommand (":prompt",xs) = return . updatePrompt xs
+runCommand (":reset",_) = return . updateLiveVM initVM
+runCommand (":ptr",xs) = printPtrInfo xs
+runCommand (":load",xs) = tryLoadFile xs
+runCommand (":opts",xs) = handleOptsInput xs
+runCommand (":{",_) = handleMultilineInput
+runCommand (":reset-opts",_) = handleOptsInput [] . updateOpts (0, [])
+runCommand (":quit",_) = handleQuitInput
+runCommand (x,_) = handleInvalidCommand x
+
+interpretLive :: String -> LiveInterpreter -> IO LiveInterpreter
+interpretLive s li = runByteCode vm code >>= \vm' -> return $ updateLiveVM vm' li
     where
-        go vm s = unless (null s) $ runByteCode vm (optimize lvl (parseCode s)) >>= \vm -> putStr prompt >> getLine >>= \s -> handleInput lvl s vm >>= \vm -> go vm s
+        vm = liveVM li
+        opts = opt li
+        code = optimize opts $ parseCode s
+
+handleInput :: String -> LiveInterpreter -> IO LiveInterpreter
+handleInput [] li = return li
+handleInput s li
+    | ":" `isPrefixOf` s = let (x, y) = break (==' ') s in runCommand (x, safeTail y) li
+    | otherwise = interpretLive s li
+
+runLiveInterpreter :: (Int, [String]) -> IO ()
+runLiveInterpreter opts = do
+    printIntro
+    
+    iterateM' (initLiveInterpreter opts) (\li -> do
+        putStr (prmpt li)
+        s <- readLine
+        li' <- handleInput (trimLeft s) li
+        when ('.' `elem` s) (putStrLn "")
+        return li')
+
+    return ()
+    

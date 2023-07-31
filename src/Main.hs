@@ -4,14 +4,15 @@ import Data.Char (isSpace)
 
 import Args 
 import Compiler (compileTo)
-import Consts (version)
+import Consts (version, optimizationFlags)
 import Parser (parseCode)
-import Interpreter (runFile, runInteractiveInterpreter)
+import Interpreter (runFile, runLiveInterpreter)
 
 ---------------------------------------------------------------------------------------------------------------
 -- TODO
 ---------------------------------------------------------------------------------------------------------------
 
+-- Finish live interpreter
 -- Allow choosing specific optimizations -> receive opts from input and sort them
 -- Compile to assembly
 -- Compile to ELF (Need to think this through yet)
@@ -31,16 +32,19 @@ printHelp :: IO ()
 printHelp = putStrLn $ "\n" ++
     "MindBlowing v" ++ version ++ "\n\n" ++
     "Usage:\n" ++
-    "    runhaskell Main.hs [command-line-options-and-input-file]\n\n" ++
+    "\trunhaskell Main.hs [command-line-options-and-input-file]\n\n" ++
     "Commands:\n" ++
-    "    -h | --help                 print Help\n" ++
-    "    -v | --version              print version\n" ++
-    "    -S                          compile to assembly\n" ++
-    "    -C                          compile to C\n" ++
-    "    -o <file-name>              rename output file\n" ++
-    "    -r | run                    interpret file\n" ++
-    "    -b | build                  compile file to binary\n" ++
-    "    -O0 | -O1 | -O2 | -O3       choose optimization level\n\n"
+    "\t<no-argument>               run interactive interpreter\n" ++
+    "\t-h | --help                 print Help\n" ++
+    "\t-v | --version              print version\n" ++
+    "\t-S                          compile to assembly\n" ++
+    "\t-C                          compile to C\n" ++
+    "\t-o <file-name>              rename output file\n" ++
+    "\t-r | run                    interpret file\n" ++
+    "\t-b | build                  compile file to binary\n" ++
+    "\t-O0 | -O1 | -O2 | -O3       choose optimization level\n\n" ++
+    "Individual Optimization Flags:\n" ++
+    (foldl (\ acc x -> "\t" ++ x ++ "\n" ++ acc) [] optimizationFlags)
 
 printVersion :: IO ()
 printVersion = putStrLn $ "The Magnificent MindBlowing Brainfuck Compilation System, version " ++ version
@@ -49,12 +53,12 @@ handleFlags :: Args -> IO ()
 handleFlags args
     | hasHelpFlag args = printHelp
     | hasVersionFlag args = printVersion
-    | hasRunFlag args = runFile (getInFile args) (getOptimizationLevel args)
-    | hasByteCodeFlag args = compileTo "ByteCode" (getInFile args) (getOutFile args) (getOptimizationLevel args)
-    | hasCFlag args = compileTo "C" (getInFile args) (getOutFile args) (getOptimizationLevel args)
-    | hasAssemblyFlag args = compileTo "asm" (getInFile args) (getOutFile args) (getOptimizationLevel args)
-    | hasBuildFlag args = compileTo "elf" (getInFile args) (getOutFile args) (getOptimizationLevel args)
-    | otherwise = runInteractiveInterpreter $ getOptimizationLevel args
+    | hasRunFlag args = runFile (getInFile args) (getOptimizations args) >> putStrLn ""
+    | hasByteCodeFlag args = compileTo "ByteCode" (getInFile args) (getOutFile args) (getOptimizations args)
+    | hasCFlag args = compileTo "C" (getInFile args) (getOutFile args) (getOptimizations args)
+    | hasAssemblyFlag args = compileTo "asm" (getInFile args) (getOutFile args) (getOptimizations args)
+    | hasBuildFlag args = compileTo "elf" (getInFile args) (getOutFile args) (getOptimizations args)
+    | otherwise = runLiveInterpreter $ getOptimizations args
 
 main :: IO ()
 main = getArgs >>= handleFlags . parseArgs

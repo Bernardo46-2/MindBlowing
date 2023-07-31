@@ -1,6 +1,9 @@
 module Optimizer (optimize) where
 
+import Data.List (sortBy, find, nub)
+
 import Inst
+import Consts (optimizationFlags)
 
 -------------------------------------------------------------------------------------------------------------------
 -- Level 1 Optimization
@@ -19,7 +22,9 @@ compressOps (i:is) = go [i] is
             case sumOps x i of
                 Just i' -> go (i':xs) is
                 Nothing -> go (i:acc) is
-        sumOps (Add x off) (Add y _) = Just (Add (x+y) off)
+        sumOps (Add x off) (Add y off')
+            | off == off' = Just (Add (x+y) off)
+            | otherwise = Nothing
         sumOps (Move x) (Move y) = Just (Move (x+y))
         sumOps _ _ = Nothing
 
@@ -67,16 +72,17 @@ removeUselessInitialOps :: ByteCode -> ByteCode
 removeUselessInitialOps = dropWhile (\i -> isLoop i || isClear i || isMul i || isNop i || isScan i)
 
 cancelUselessAdds :: ByteCode -> ByteCode
-cancelUselessAdds = go []
+cancelUselessAdds = go [] . compressOps
     where
         go acc [] = reverse acc
         go (a@(Add _ off):acc) (i@(Clear off'):is)
             | off == off' = go (i:acc) is
             | otherwise = go (i:a:acc) is
+        go acc (Loop xs:is) = go (Loop (cancelUselessAdds xs):acc) is
         go acc (i:is) = go (i:acc) is
 
 clearToSet :: ByteCode -> ByteCode
-clearToSet = go []
+clearToSet = go [] . compressOps
     where
         go acc [] = reverse acc
         go (c@(Clear off):acc) (i@(Add x off'):is)
@@ -86,7 +92,7 @@ clearToSet = go []
         go acc (i:is) = go (i:acc) is
 
 loopToMul :: ByteCode -> ByteCode
-loopToMul = go [] . adjustOffsets
+loopToMul = go []
     where
         go acc [] = Clear 0:acc
         go acc (Add _ 0:is) = go acc is
@@ -108,15 +114,51 @@ tryOptimizeMulLoop i =
         go acc p _ (x:xs) = go (x:acc) p False xs
 
 optimizeMulLoops :: ByteCode -> ByteCode
-optimizeMulLoops = reverse . foldl (\acc x -> tryOptimizeMulLoop x ++ acc) []
+optimizeMulLoops = reverse . foldl (\ acc x -> tryOptimizeMulLoop x ++ acc) [] . adjustOffsets
 
 -------------------------------------------------------------------------------------------------------------------
 -- Optimizer
 -------------------------------------------------------------------------------------------------------------------
 
-optimize :: Int -> ByteCode -> ByteCode
-optimize 0 = id
-optimize 1 = compressOps . optimizeClearLoops . removeNops
-optimize 2 = optimizeScanLoops . adjustOffsets . optimize 1
-optimize 3 = removeUselessInitialOps . cancelUselessAdds . clearToSet . optimizeMulLoops . optimize 2
-optimize lvl = error $ "Optimization level `" ++ show lvl ++ "` invalid"
+setOptimizationWeights :: [String] -> [(Int, String)]
+setOptimizationWeights = foldl (\ acc x -> go x ++ acc) []
+    where
+        go s =
+            case find (\(_, x) -> x == s) ow of
+                Just x -> [x]
+                Nothing -> []
+        l = length optimizationFlags
+        ow = zip [0..l] optimizationFlags
+
+removeOptimizationWeights :: [(Int, String)] -> [String]
+removeOptimizationWeights = foldr (\ (_, s) acc -> s:acc) []
+
+sortOptimizations :: [String] -> [String]
+sortOptimizations = removeOptimizationWeights . sortBy (\ (x, _) (y, _) -> compare x y) . setOptimizationWeights
+
+optsLvl :: Int -> [String]
+optsLvl 1 = ["-remove-nops", "-optimize-clear-loops", "-compress-ops"]
+optsLvl 2 = optsLvl 1 ++ ["-adjust-offsets", "-optimize-scan-loops"]
+optsLvl 3 = optsLvl 2 ++ ["-optimize-mul-loops", "-clear-to-set", "-cancel-useless-adds", "-remove-useless-initial-ops"]
+optsLvl _ = []
+
+concatOptLists :: [String] -> [String] -> [String]
+concatOptLists xs ys = nub (xs ++ ys)
+
+optFlagsToFunctions :: [String] -> [ByteCode -> ByteCode]
+optFlagsToFunctions = foldr (\ s acc -> go s:acc) []
+    where
+        go "-remove-nops" = removeNops
+        go "-optimize-clear-loops" = optimizeClearLoops
+        go "-compress-ops" = compressOps
+        go "-adjust-offsets" = adjustOffsets
+        go "-optimize-scan-loops" = optimizeScanLoops
+        go "-optimize-mul-loops" = optimizeMulLoops
+        go "-clear-to-set" = clearToSet
+        go "-cancel-useless-adds" = cancelUselessAdds
+        go "-remove-useless-initial-ops" = removeUselessInitialOps
+
+optimize :: (Int, [String]) -> ByteCode -> ByteCode
+optimize (lvl, opts) xs
+    | lvl `elem` [0..3] = foldl (\ acc f -> f acc) xs $ optFlagsToFunctions $ sortOptimizations $ concatOptLists (optsLvl lvl) opts
+    | otherwise = error $ "Optimization level `" ++ show lvl ++ "` invalid"

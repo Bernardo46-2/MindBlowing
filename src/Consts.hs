@@ -5,26 +5,37 @@ import Data.Int (Int64)
 version :: String
 version = "I.D.K"
 
-memSize :: Int
+memSize :: Num a => a
 memSize = 30_000
 
-memSizeI64 :: Int64
-memSizeI64 = 30_000
-
 prompt :: String
-prompt = "BF: "
+prompt = "BF "
 
-outFile :: String
-outFile = "a"
+defaultOutFile :: String
+defaultOutFile = "a"
 
-byteCodeFileExtension :: String
-byteCodeFileExtension = ".txt"
+byteCodeDefaultFileName :: String
+byteCodeDefaultFileName = defaultOutFile ++ ".txt"
 
-cFileExtension :: String
-cFileExtension = ".c"
+cDefaultFileName :: String
+cDefaultFileName = defaultOutFile ++ ".c"
 
-assemblyFileExtension :: String
-assemblyFileExtension = ".s"
+assemblyDefaultFileName :: String
+assemblyDefaultFileName = defaultOutFile ++ ".s"
 
-binaryFileExtension :: String
-binaryFileExtension = ".out"
+binaryDefaultFileName :: String
+binaryDefaultFileName = defaultOutFile ++ ".out"
+
+optimizationFlags :: [String]
+optimizationFlags = [
+        "-remove-nops",
+        "-optimize-clear-loops",
+        "-compress-ops",
+        "-adjust-offsets",
+        "-optimize-scan-loops",
+        "-optimize-mul-loops",
+        "-clear-to-set",
+        "-cancel-useless-adds",
+        "-remove-useless-initial-ops"
+    ]
+
