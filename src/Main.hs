@@ -5,7 +5,6 @@ import Data.Char (isSpace)
 import Args 
 import Compiler (compileTo)
 import Consts (version, optimizationFlags)
-import Parser (parseCode)
 import Interpreter (runFile, runLiveInterpreter)
 
 ---------------------------------------------------------------------------------------------------------------

@@ -3,7 +3,7 @@ module Consts where
 import Data.Int (Int64)
 
 version :: String
-version = "I.D.K"
+version = "1.0.0"
 
 memSize :: Num a => a
 memSize = 30_000
