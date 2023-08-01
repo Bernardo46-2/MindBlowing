@@ -71,12 +71,12 @@ toC indent i@(Input off) = indent ++ "m[ADD_PTR_OFFSET(p," ++ show off ++")] = g
 toC indent i@(Output off) = indent ++ "putchar(m[ADD_PTR_OFFSET(p," ++ show off ++")]); // " ++ toByteCode i ++ "\n"
 toC indent i@(Clear off) = indent ++ "m[ADD_PTR_OFFSET(p," ++ show off ++")] = 0; // " ++ toByteCode i ++ "\n"
 toC indent i@(Set x off) = indent ++ "m[ADD_PTR_OFFSET(p," ++ show off ++")] = " ++ show x ++ "; // " ++ toByteCode i ++ "\n"
-toC indent i@(Mul x off) = indent ++ "m[ADD_PTR_OFFSET(p," ++ show off ++")] " ++ 
-    (if x == -1 then "-" else "+") ++ "= m[p]" ++ 
-    (if x /= 1 && x /= -1 then " * " ++ show x else []) ++ "; // " ++ toByteCode i ++ "\n"
 toC indent i@(Scan 'l') = indent ++ "while(m[p]) p = ADD_PTR_OFFSET(p," ++ show (-1) ++ "); // " ++ toByteCode i ++ "\n"
 toC indent i@(Scan 'r') = indent ++ "while(m[p]) p = ADD_PTR_OFFSET(p," ++ show 1 ++ "); // " ++ toByteCode i ++ "\n"
 toC indent i@(Loop is) = "\n" ++ indent ++ "while(m[p]) {\n" ++ (foldr (\ x acc -> (toC ("\t" ++ indent) x) ++ acc) [] is) ++ indent ++ "}\n\n"
+toC indent i@(Mul x off) = indent ++ "m[ADD_PTR_OFFSET(p," ++ show off ++")] " ++ 
+    (if x == -1 then "-" else "+") ++ "= m[p]" ++ 
+    (if x /= 1 && x /= -1 then " * " ++ show x else []) ++ "; // " ++ toByteCode i ++ "\n"
 
 instsToC :: ByteCode -> String
 instsToC = foldr (\ x acc -> (toC "\t" x) ++ acc) []

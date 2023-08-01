@@ -1,6 +1,4 @@
 import System.Environment (getArgs)
-import Data.List (isPrefixOf)
-import Data.Char (isSpace)
 
 import Args 
 import Compiler (compileTo)

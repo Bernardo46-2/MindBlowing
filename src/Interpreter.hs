@@ -4,6 +4,7 @@ module Interpreter (
 ) where
 
 import System.Exit (exitWith, ExitCode (..))
+import System.Directory (doesFileExist)
 import Control.Monad (foldM, when)
 import Data.Word (Word8)
 import Data.Char (chr, ord, isDigit)
@@ -16,7 +17,6 @@ import Consts (version, memSize, prompt, optimizationFlags)
 import Utils (trim, trimLeft, replaceBS, iterateM', readLine, readUntil, safeTail)
 import Parser (parseFile, parseCode)
 import Optimizer (optimize)
-import System.Directory (doesFileExist)
 
 data VM = VM { ptr :: Int64, mem :: B.ByteString } deriving Show
 

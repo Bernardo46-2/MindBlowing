@@ -1,7 +1,5 @@
 module Consts where
 
-import Data.Int (Int64)
-
 version :: String
 version = "1.0.0"
 
@@ -9,7 +7,7 @@ memSize :: Num a => a
 memSize = 30_000
 
 prompt :: String
-prompt = "BF "
+prompt = ">> "
 
 defaultOutFile :: String
 defaultOutFile = "a"
