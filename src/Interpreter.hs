@@ -28,7 +28,7 @@ initVM :: VM
 initVM = VM 0 $ B.pack $ take memSize $ repeat 0
 
 addPtrOffset :: Int64 -> Int64 -> Int64
-addPtrOffset p off = (p+off) `mod` memSize
+addPtrOffset p off = (p+off) `rem` memSize
 
 getWithPtrOffset :: Int64 -> VM -> Word8
 getWithPtrOffset off vm = B.index (mem vm) (addPtrOffset (ptr vm) off)

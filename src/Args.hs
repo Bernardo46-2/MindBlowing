@@ -92,7 +92,6 @@ parseArgs = go initArgs
     where
         go acc [] = acc
         go acc (x:xs)
-            | not ("-" `isPrefixOf` x) = go (replace 0 (InFile x) acc) xs
             | x == "-o" = go (replace 1 (OutFile (head xs)) acc) (tail xs)
             | "-O" `isPrefixOf` x = go (replace 2 (Optimize (read (drop 2 x))) acc) xs
             | x == "-h" || x == "--help" = go (replace 3 (Help True) acc) xs
@@ -103,4 +102,5 @@ parseArgs = go initArgs
             | x == "-v" || x == "--version" = go (replace 8 (Version True) acc) xs
             | x == "-b" || x == "build" = go (replace 9 (Build True) acc) xs
             | x `elem` optimizationFlags = go (replace 10 (CustomOpts (x:getCustomOptimizations acc)) acc) xs
+            | not ("-" `isPrefixOf` x) = go (replace 0 (InFile x) acc) xs
             | otherwise = error $ "Args: Invalid Argument `" ++ x ++ "`"
