@@ -28,22 +28,10 @@ initParser s =
     }
 
 moveLine :: Parser -> Parser
-moveLine p = 
-    Parser {
-        code = (tail . code) p,
-        line = line p + 1,
-        col = 0,
-        bytecode = bytecode p
-    }
+moveLine p = p { code = (tail . code) p, line = line p + 1, col = 0 }
 
 moveColumn :: Parser -> Parser
-moveColumn p = 
-    Parser {
-        code = (tail . code) p,
-        line = line p,
-        col = col p + 1,
-        bytecode = bytecode p
-    }
+moveColumn p = p { code = (tail . code) p, col = col p + 1 }
 
 move :: Parser -> Parser
 move p
@@ -53,13 +41,7 @@ move p
         else moveLine p
 
 pushInst :: Inst -> Parser -> Parser
-pushInst i p =
-    Parser {
-        code = code p,
-        line = line p,
-        col = col p,
-        bytecode = i:bytecode p
-    }
+pushInst i p = p { bytecode = i:bytecode p }
 
 parseInst :: Parser -> Parser
 parseInst p = 

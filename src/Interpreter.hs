@@ -120,28 +120,13 @@ initLiveInterpreter opts =
     }
 
 updateLiveVM :: VM -> LiveInterpreter -> LiveInterpreter
-updateLiveVM vm li =
-    LiveInterpreter {
-        prmpt = prmpt li,
-        opt = opt li,
-        liveVM = vm
-    }
+updateLiveVM vm li = li { liveVM = vm }
 
 updateOpts :: (Int, [String]) -> LiveInterpreter -> LiveInterpreter
-updateOpts opts li =
-    LiveInterpreter {
-        prmpt = prmpt li,
-        opt = opts,
-        liveVM = liveVM li
-    }
+updateOpts opts li = li { opt = opts }
 
 updatePrompt :: String -> LiveInterpreter -> LiveInterpreter
-updatePrompt p li =
-    LiveInterpreter {
-        prmpt = p,
-        opt = opt li,
-        liveVM = liveVM li
-    }
+updatePrompt p li = li { prmpt = p }
 
 printIntro :: IO ()
 printIntro = putStrLn $

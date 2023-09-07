@@ -18,89 +18,121 @@ module Args (
 import Data.List (isPrefixOf)
 
 import Consts (optimizationFlags)
-import Utils (trim, replace)
+import Utils (replace)
 
-data Arg
-    = InFile String
-    | OutFile String
-    | Optimize Int
-    | Help Bool
-    | Assembly Bool
-    | ByteCode Bool
-    | Run Bool
-    | C Bool
-    | Build Bool
-    | Version Bool
-    | CustomOpts [String]
-    deriving Show
-
-type Args = [Arg]
+data Args = Args {
+      inFile :: String
+    , outFile :: String
+    , optimize :: Int
+    , help :: Bool
+    , assembly :: Bool
+    , byteCode :: Bool
+    , run :: Bool
+    , c :: Bool
+    , build :: Bool
+    , version :: Bool
+    , customOpts :: [String]
+}
 
 initArgs :: Args
-initArgs = [
-        InFile [],
-        OutFile [],
-        Optimize 0,
-        Help False,
-        Assembly False,
-        ByteCode False,
-        Run False,
-        C False,
-        Version False,
-        Build False,
-        CustomOpts []
-    ]
+initArgs = 
+    Args {
+        inFile = [],
+        outFile = [],
+        optimize = 0,
+        help = False,
+        assembly = False,
+        byteCode = False,
+        run = False,
+        c = False,
+        build = False,
+        version = False,
+        customOpts = []
+    }
 
 getInFile :: Args -> String
-getInFile xs = let InFile x = head xs in x
+getInFile = inFile
 
 getOutFile :: Args -> String
-getOutFile xs = let OutFile x = xs !! 1 in x
+getOutFile = outFile
 
 getOptimizationLevel :: Args -> Int
-getOptimizationLevel xs = let Optimize x = xs !! 2 in x
+getOptimizationLevel = optimize
 
 hasHelpFlag :: Args -> Bool
-hasHelpFlag xs = let Help x = xs !! 3 in x
+hasHelpFlag = help
 
 hasAssemblyFlag :: Args -> Bool
-hasAssemblyFlag xs = let Assembly x = xs !! 4 in x
+hasAssemblyFlag = assembly
 
 hasByteCodeFlag :: Args -> Bool
-hasByteCodeFlag xs = let ByteCode x = xs !! 5 in x
+hasByteCodeFlag = byteCode
 
 hasRunFlag :: Args -> Bool 
-hasRunFlag xs = let Run x = xs !! 6 in x
+hasRunFlag = run
 
 hasCFlag :: Args -> Bool
-hasCFlag xs = let C x = xs !! 7 in x
+hasCFlag = c
 
 hasVersionFlag :: Args -> Bool
-hasVersionFlag xs = let Version x = xs !! 8 in x
+hasVersionFlag = version
 
 hasBuildFlag :: Args -> Bool
-hasBuildFlag xs = let Build x = xs !! 9 in x
+hasBuildFlag = build
 
 getCustomOptimizations :: Args -> [String]
-getCustomOptimizations xs = let CustomOpts x = xs !! 10 in x
+getCustomOptimizations = customOpts
 
 getOptimizations :: Args -> (Int, [String])
-getOptimizations xs = (getOptimizationLevel xs, getCustomOptimizations xs)
+getOptimizations = (,) <$> getOptimizationLevel <*> getCustomOptimizations
+
+setInFile :: String -> Args -> Args
+setInFile x args = args { inFile = x }
+
+setOutFile :: String -> Args -> Args
+setOutFile x args = args { outFile = x }
+
+setOptimizationLevel :: Int -> Args -> Args
+setOptimizationLevel x args = args { optimize = x }
+
+setHelpFlag :: Bool -> Args -> Args
+setHelpFlag x args = args { help = x }
+
+setAssemblyFlag :: Bool -> Args -> Args
+setAssemblyFlag x args = args { assembly = x }
+
+setByteCodeFlag :: Bool -> Args -> Args
+setByteCodeFlag x args = args { byteCode = x }
+
+setRunFlag :: Bool  -> Args -> Args
+setRunFlag x args = args { run = x }
+
+setCFlag :: Bool -> Args -> Args
+setCFlag x args = args { c = x }
+
+setVersionFlag :: Bool -> Args -> Args
+setVersionFlag x args = args { version = x }
+
+setBuildFlag :: Bool -> Args -> Args
+setBuildFlag x args = args { build = x }
+
+pushCustomOptimizations :: String -> Args -> Args
+pushCustomOptimizations x args = args { customOpts = x:customOpts args }
 
 parseArgs :: [String] -> Args
 parseArgs = go initArgs
     where
         go acc [] = acc
         go acc (x:xs)
-            | x == "-o" = go (replace 1 (OutFile (head xs)) acc) (tail xs)
-            | "-O" `isPrefixOf` x = go (replace 2 (Optimize (read (drop 2 x))) acc) xs
-            | x == "-h" || x == "--help" = go (replace 3 (Help True) acc) xs
-            | x == "-S" = go (replace 4 (Assembly True) acc) xs
-            | x == "-B" = go (replace 5 (ByteCode True) acc) xs
-            | x == "-r" || x == "run" = go (replace 6 (Run True) acc) xs
-            | x == "-C" = go (replace 7 (C True) acc) xs
-            | x == "-v" || x == "--version" = go (replace 8 (Version True) acc) xs
-            | x == "-b" || x == "build" = go (replace 9 (Build True) acc) xs
-            | x `elem` optimizationFlags = go (replace 10 (CustomOpts (x:getCustomOptimizations acc)) acc) xs
-            | not ("-" `isPrefixOf` x) = go (replace 0 (InFile x) acc) xs
+            | x == "-o" = go (setOutFile (head xs) acc) (tail xs)
+            | "-O" `isPrefixOf` x = go (setOptimizationLevel (read (drop 2 x)) acc) xs
+            | x == "-h" || x == "--help" = go (setHelpFlag True acc) xs
+            | x == "-S" = go (setAssemblyFlag True acc) xs
+            | x == "-B" = go (setByteCodeFlag True acc) xs
+            | x == "-r" || x == "run" = go (setRunFlag True acc) xs
+            | x == "-C" = go (setCFlag True acc) xs
+            | x == "-v" || x == "--version" = go (setVersionFlag True acc) xs
+            | x == "-b" || x == "build" = go (setBuildFlag True acc) xs
+            | x `elem` optimizationFlags = go (pushCustomOptimizations x acc) xs
+            | not ("-" `isPrefixOf` x) = go (setInFile x acc) xs
             | otherwise = error $ "Args: Invalid Argument `" ++ x ++ "`"

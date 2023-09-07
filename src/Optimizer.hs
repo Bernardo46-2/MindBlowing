@@ -6,6 +6,71 @@ import Inst
 import Consts (optimizationFlags)
 
 -------------------------------------------------------------------------------------------------------------------
+-- Optimization Enum
+-------------------------------------------------------------------------------------------------------------------
+
+type Opts = [Opt]
+
+data Opt
+    = RemoveNops (ByteCode -> ByteCode)
+    | OptimizeClearLoops (ByteCode -> ByteCode)
+    | CompressOps (ByteCode -> ByteCode)
+    | AdjustOffsets (ByteCode -> ByteCode)
+    | OptimizeScanLoops (ByteCode -> ByteCode)
+    | OptimizeMulLoops (ByteCode -> ByteCode)
+    | ClearToSet (ByteCode -> ByteCode)
+    | CancelUselessAdds (ByteCode -> ByteCode)
+    | RemoveUselessInitialOps (ByteCode -> ByteCode)
+
+instance Eq Opt where
+    RemoveNops _ == RemoveNops _ = True
+    OptimizeClearLoops _ == OptimizeClearLoops _ = True
+    CompressOps _ == CompressOps _ = True
+    AdjustOffsets _ == AdjustOffsets _ = True
+    OptimizeScanLoops _ == OptimizeScanLoops _ = True
+    OptimizeMulLoops _ == OptimizeMulLoops _ = True
+    ClearToSet _ == ClearToSet _ = True
+    CancelUselessAdds _ == CancelUselessAdds _ = True
+    RemoveUselessInitialOps _ == RemoveUselessInitialOps _ = True
+    _ == _ = False
+
+initOpt :: String -> Opt
+initOpt "-remove-nops" = RemoveNops removeNops
+initOpt "-optimize-clear-loops" = OptimizeClearLoops optimizeClearLoops
+initOpt "-compress-ops" = CompressOps compressOps
+initOpt "-adjust-offsets" = AdjustOffsets adjustOffsets
+initOpt "-optimize-scan-loops" = OptimizeScanLoops optimizeScanLoops
+initOpt "-optimize-mul-loops" = OptimizeMulLoops optimizeMulLoops
+initOpt "-clear-to-set" = ClearToSet clearToSet
+initOpt "-cancel-useless-adds" = CancelUselessAdds cancelUselessAdds
+initOpt "-remove-useless-initial-ops" = RemoveUselessInitialOps removeUselessInitialOps
+
+initOpts :: [String] -> Opts
+initOpts = foldr (\x acc -> initOpt x:acc) []
+
+getOptOrder :: Opt -> Int
+getOptOrder (RemoveNops _) = 0 
+getOptOrder (OptimizeClearLoops _) = 1
+getOptOrder (CompressOps _) = 2
+getOptOrder (AdjustOffsets _) = 3
+getOptOrder (OptimizeScanLoops _) = 4
+getOptOrder (OptimizeMulLoops _) = 5
+getOptOrder (ClearToSet _) = 6
+getOptOrder (CancelUselessAdds _) = 7
+getOptOrder (RemoveUselessInitialOps _) = 8
+
+applyOpt :: ByteCode -> Opt -> ByteCode
+applyOpt xs (RemoveNops f) = f xs 
+applyOpt xs (OptimizeClearLoops f) = f xs
+applyOpt xs (CompressOps f) = f xs
+applyOpt xs (AdjustOffsets f) = f xs
+applyOpt xs (OptimizeScanLoops f) = f xs
+applyOpt xs (OptimizeMulLoops f) = f xs
+applyOpt xs (ClearToSet f) = f xs
+applyOpt xs (CancelUselessAdds f) = f xs
+applyOpt xs (RemoveUselessInitialOps f) = f xs
+
+-------------------------------------------------------------------------------------------------------------------
 -- Level 1 Optimization
 -------------------------------------------------------------------------------------------------------------------
 
@@ -20,7 +85,7 @@ compressOps (i:is) = go [i] is
         go acc (Loop xs:is) = go (Loop (compressOps xs):acc) is
         go acc@(x:xs) (i:is) =
             case sumOps x i of
-                Just i' -> go (i':xs) is
+                Just j -> go (j:xs) is
                 Nothing -> go (i:acc) is
         sumOps (Add x off) (Add y off')
             | off == off' = Just (Add (x+y) off)
@@ -120,45 +185,17 @@ optimizeMulLoops = reverse . foldl (\ acc x -> tryOptimizeMulLoop x ++ acc) [] .
 -- Optimizer
 -------------------------------------------------------------------------------------------------------------------
 
-setOptimizationWeights :: [String] -> [(Int, String)]
-setOptimizationWeights = foldl (\ acc x -> go x ++ acc) []
-    where
-        go s =
-            case find (\(_, x) -> x == s) ow of
-                Just x -> [x]
-                Nothing -> []
-        l = length optimizationFlags
-        ow = zip [0..l] optimizationFlags
+sortOptimizations :: Opts -> Opts
+sortOptimizations = sortBy (\ x y -> compare (getOptOrder x) (getOptOrder y))
 
-removeOptimizationWeights :: [(Int, String)] -> [String]
-removeOptimizationWeights = foldr (\ (_, s) acc -> s:acc) []
+optsLvl :: Int -> Opts
+optsLvl 1 = foldr (\ x acc -> initOpt x:acc) [] $ take 3 optimizationFlags
+optsLvl 2 = foldr (\ x acc -> initOpt x:acc) [] $ take 5 optimizationFlags
+optsLvl 3 = foldr (\ x acc -> initOpt x:acc) [] optimizationFlags
+optsLvl lvl = if lvl <= 0 then [] else optsLvl 3
 
-sortOptimizations :: [String] -> [String]
-sortOptimizations = removeOptimizationWeights . sortBy (\ (x, _) (y, _) -> compare x y) . setOptimizationWeights
-
-optsLvl :: Int -> [String]
-optsLvl 1 = ["-remove-nops", "-optimize-clear-loops", "-compress-ops"]
-optsLvl 2 = optsLvl 1 ++ ["-adjust-offsets", "-optimize-scan-loops"]
-optsLvl 3 = optsLvl 2 ++ ["-optimize-mul-loops", "-clear-to-set", "-cancel-useless-adds", "-remove-useless-initial-ops"]
-optsLvl _ = []
-
-concatOptLists :: [String] -> [String] -> [String]
+concatOptLists :: Opts -> Opts -> Opts
 concatOptLists xs ys = nub (xs ++ ys)
 
-optFlagsToFunctions :: [String] -> [ByteCode -> ByteCode]
-optFlagsToFunctions = foldr (\ s acc -> go s:acc) []
-    where
-        go "-remove-nops" = removeNops
-        go "-optimize-clear-loops" = optimizeClearLoops
-        go "-compress-ops" = compressOps
-        go "-adjust-offsets" = adjustOffsets
-        go "-optimize-scan-loops" = optimizeScanLoops
-        go "-optimize-mul-loops" = optimizeMulLoops
-        go "-clear-to-set" = clearToSet
-        go "-cancel-useless-adds" = cancelUselessAdds
-        go "-remove-useless-initial-ops" = removeUselessInitialOps
-
 optimize :: (Int, [String]) -> ByteCode -> ByteCode
-optimize (lvl, opts) xs
-    | lvl `elem` [0..3] = foldl (\ acc f -> f acc) xs $ optFlagsToFunctions $ sortOptimizations $ concatOptLists (optsLvl lvl) opts
-    | otherwise = error $ "Optimization level `" ++ show lvl ++ "` invalid"
+optimize (lvl, opts) xs = foldl applyOpt xs $ sortOptimizations $ concatOptLists (optsLvl lvl) $ initOpts opts
